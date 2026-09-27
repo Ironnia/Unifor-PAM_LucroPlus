@@ -30,7 +30,13 @@ import kotlinx.serialization.json.Json
 import org.slf4j.event.Level
 
 fun main() {
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0", module = Application::module)
+    val serverHost = System.getenv("SERVER_HOST")?.trim()?.takeIf { it.isNotEmpty() } ?: "0.0.0.0"
+    val serverPort = System.getenv("SERVER_PORT")
+        ?.toIntOrNull()
+        ?.takeIf { it in 1..65535 }
+        ?: 8080
+
+    embeddedServer(Netty, port = serverPort, host = serverHost, module = Application::module)
         .start(wait = true)
 }
 

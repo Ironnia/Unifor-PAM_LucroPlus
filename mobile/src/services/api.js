@@ -1,10 +1,8 @@
 import axios from 'axios';
-
-// baseURL apontando para o backend Ktor (10.0.2.2 para emulador Android ou localhost para web/iOS)
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8080';
+import { API_BASE_URL } from '../config/environment';
 
 const client = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
