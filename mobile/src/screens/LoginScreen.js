@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { authApi } from '../services/api';
 
-export default function LoginScreen({ onLoginSuccess }) {
+export default function LoginScreen({ onLoginSuccess, sessionMessage }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -22,6 +22,10 @@ export default function LoginScreen({ onLoginSuccess }) {
 
   const [modoRegistro, setModoRegistro] = useState(false);
   const [nome, setNome] = useState('');
+
+  useEffect(() => {
+    if (sessionMessage) setErro(sessionMessage);
+  }, [sessionMessage]);
 
   const validarFormulario = () => {
     setErro('');

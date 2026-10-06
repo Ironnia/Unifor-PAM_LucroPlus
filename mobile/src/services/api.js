@@ -4,7 +4,7 @@ import { sessionStorage } from './sessionStorage';
 
 const client = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000, // 10 segundos de timeout para evitar travamento de UI
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -12,18 +12,55 @@ const client = axios.create({
 });
 
 let authToken = null;
+let unauthorizedListener = null;
+let invalidationPromise = null;
 
-// atualiza o token jwt no cabecalho do axios
+const SESSION_EXPIRED_MESSAGE = 'Sua sessão expirou. Entre novamente.';
+const SESSION_CLEAR_FAILED_MESSAGE = 'Sua sessão expirou, mas não foi possível remover o acesso salvo neste aparelho. Tente novamente.';
+
 export const setAuthToken = (token) => {
   authToken = token;
-  if (token) {
-    client.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  } else {
-    delete client.defaults.headers.common['Authorization'];
-  }
 };
 
 export const getAuthToken = () => authToken;
+
+export const subscribeToUnauthorized = (listener) => {
+  unauthorizedListener = listener;
+  return () => {
+    if (unauthorizedListener === listener) unauthorizedListener = null;
+  };
+};
+
+client.interceptors.request.use((config) => {
+  if (config.skipAuth) return config;
+  if (authToken) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${authToken}`;
+    config.sessionToken = authToken;
+  }
+  return config;
+});
+
+client.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const requestToken = error.config?.sessionToken;
+    if (error.response?.status === 401 && requestToken && requestToken === authToken) {
+      setAuthToken(null);
+      const task = sessionStorage.clear()
+        .then(
+          () => unauthorizedListener?.(SESSION_EXPIRED_MESSAGE),
+          () => unauthorizedListener?.(SESSION_CLEAR_FAILED_MESSAGE),
+        )
+        .finally(() => {
+          if (invalidationPromise === task) invalidationPromise = null;
+        });
+      invalidationPromise = task;
+      await task;
+    }
+    return Promise.reject(error);
+  },
+);
 
 const saveSession = async (token) => {
   if (!token) {
@@ -31,7 +68,7 @@ const saveSession = async (token) => {
   }
 
   try {
-    // Só liberamos a navegação depois que a gravação persistente terminar.
+    if (invalidationPromise) await invalidationPromise;
     await sessionStorage.write(token);
   } catch (_) {
     const error = new Error('Não foi possível salvar a sessão com segurança neste aparelho.');
@@ -43,13 +80,13 @@ const saveSession = async (token) => {
 
 export const authApi = {
   login: async (email, senha) => {
-    const response = await client.post('/auth/login', { email, senha });
+    const response = await client.post('/auth/login', { email, senha }, { skipAuth: true });
     await saveSession(response.data?.token);
     return response.data;
   },
 
   register: async (nome, email, senha, tipo = 'GERENTE') => {
-    const response = await client.post('/auth/register', { nome, email, senha, tipo });
+    const response = await client.post('/auth/register', { nome, email, senha, tipo }, { skipAuth: true });
     await saveSession(response.data?.token);
     return response.data;
   },
@@ -65,21 +102,15 @@ export const authApi = {
 
     setAuthToken(token);
     try {
-      // O servidor verifica assinatura e validade. Um token salvo não basta para entrar.
       await authApi.getMe();
       return true;
     } catch (error) {
-      setAuthToken(null);
-      if (error.response?.status === 401) {
-        await sessionStorage.clear();
-      }
-      // Falhas de rede não apagam um token possivelmente válido. O próximo início tenta de novo.
+      if (authToken === token) setAuthToken(null);
       return false;
     }
   },
 
   logout: async () => {
-    // Se a remoção falhar, mantemos a sessão visível para não simular um logout incompleto.
     await sessionStorage.clear();
     setAuthToken(null);
   },

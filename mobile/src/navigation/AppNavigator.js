@@ -9,7 +9,7 @@ import HomeScreen from '../screens/HomeScreen';
 import EstoqueScreen from '../screens/EstoqueScreen';
 import PromocoesScreen from '../screens/PromocoesScreen';
 import ConfiguracoesScreen from '../screens/ConfiguracoesScreen';
-import { authApi } from '../services/api';
+import { authApi, subscribeToUnauthorized } from '../services/api';
 
 const Tab = createBottomTabNavigator();
 
@@ -17,20 +17,24 @@ export default function AppNavigator() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [restoringSession, setRestoringSession] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [sessionMessage, setSessionMessage] = useState(null);
 
   useEffect(() => {
     let active = true;
+    const unsubscribe = subscribeToUnauthorized((message) => {
+      if (!active) return;
+      setSessionMessage(message);
+      setIsAuthenticated(false);
+    });
     authApi.restoreSession()
       .then((restored) => {
         if (active) setIsAuthenticated(restored);
       })
-      .catch(() => {
-        // Falha ao ler o armazenamento: login manual continua disponível.
-      })
+      .catch(() => {})
       .finally(() => {
         if (active) setRestoringSession(false);
       });
-    return () => { active = false; };
+    return () => { active = false; unsubscribe(); };
   }, []);
 
   const handleLogout = async () => {
@@ -38,6 +42,7 @@ export default function AppNavigator() {
     setLoggingOut(true);
     try {
       await authApi.logout();
+      setSessionMessage(null);
       setIsAuthenticated(false);
     } catch (_) {
       Alert.alert('Não foi possível sair', 'Tente novamente para remover a sessão deste aparelho.');
@@ -51,7 +56,10 @@ export default function AppNavigator() {
   }
 
   if (!isAuthenticated) {
-    return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />;
+    return <LoginScreen sessionMessage={sessionMessage} onLoginSuccess={() => {
+      setSessionMessage(null);
+      setIsAuthenticated(true);
+    }} />;
   }
 
   return (
