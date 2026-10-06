@@ -5,7 +5,8 @@
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
-    "ios": "expo start --ios"
+    "ios": "expo start --ios",
+    "test:session": "node tests/session.test.cjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
@@ -15,6 +16,7 @@
     "axios": "^1.7.2",
     "expo": "~51.0.0",
     "expo-font": "~12.0.10",
+    "expo-secure-store": "~13.0.2",
     "expo-status-bar": "~1.12.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",

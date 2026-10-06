@@ -61,7 +61,9 @@ export default function LoginScreen({ onLoginSuccess }) {
         onLoginSuccess();
       }
     } catch (error) {
-      const msg = error.response?.data?.erro || 'Falha ao conectar com o servidor. Verifique sua conexão.';
+      const msg = error.response?.data?.erro || (error.isSessionStorageError
+        ? error.message
+        : 'Falha ao conectar com o servidor. Verifique sua conexão.');
       setErro(msg);
     } finally {
       setCarregando(false);

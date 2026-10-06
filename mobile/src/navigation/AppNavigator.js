@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,11 +15,40 @@ const Tab = createBottomTabNavigator();
 
 export default function AppNavigator() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [restoringSession, setRestoringSession] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const handleLogout = () => {
-    authApi.logout();
-    setIsAuthenticated(false);
+  useEffect(() => {
+    let active = true;
+    authApi.restoreSession()
+      .then((restored) => {
+        if (active) setIsAuthenticated(restored);
+      })
+      .catch(() => {
+        // Falha ao ler o armazenamento: login manual continua disponível.
+      })
+      .finally(() => {
+        if (active) setRestoringSession(false);
+      });
+    return () => { active = false; };
+  }, []);
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await authApi.logout();
+      setIsAuthenticated(false);
+    } catch (_) {
+      Alert.alert('Não foi possível sair', 'Tente novamente para remover a sessão deste aparelho.');
+    } finally {
+      setLoggingOut(false);
+    }
   };
+
+  if (restoringSession) {
+    return <View style={styles.loading}><ActivityIndicator color="#6c63ff" size="large" /></View>;
+  }
 
   if (!isAuthenticated) {
     return <LoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />;
@@ -61,7 +90,7 @@ export default function AppNavigator() {
             fontWeight: 'bold',
           },
           headerRight: () => (
-            <TouchableOpacity onPress={handleLogout} style={{ marginRight: 16 }}>
+            <TouchableOpacity onPress={handleLogout} disabled={loggingOut} style={{ marginRight: 16 }}>
               <Ionicons name="log-out-outline" size={22} color="#ff5252" />
             </TouchableOpacity>
           ),
@@ -75,3 +104,7 @@ export default function AppNavigator() {
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f0f23' },
+});

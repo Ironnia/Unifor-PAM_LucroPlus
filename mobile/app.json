@@ -21,6 +21,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "br.com.lucroplus"
-    }
+    },
+    "plugins": ["expo-secure-store"]
   }
 }
