@@ -12,96 +12,47 @@ import { Ionicons } from '@expo/vector-icons';
 import { lotesApi } from '../services/api';
 import { CriticidadeLote } from '../types/apiTypes';
 
-// Dados de contingencia para demonstracao offline
-const DADOS_MOCK_LOTES = [
-  {
-    id: 1,
-    ingredienteNome: 'Pão de Hambúrguer',
-    numeroLote: 'LOT-PAO-01',
-    quantidadeFormatada: '40 un',
-    diasRestantes: 4,
-    dataValidade: '2026-09-25',
-    criticidade: CriticidadeLote.ATENCAO,
-    custoUnitario: 0.015,
-  },
-  {
-    id: 2,
-    ingredienteNome: 'Carne Moída (Blend)',
-    numeroLote: 'LOT-CARNE-01',
-    quantidadeFormatada: '10.00 kg',
-    diasRestantes: 2,
-    dataValidade: '2026-09-23',
-    criticidade: CriticidadeLote.CRITICO,
-    custoUnitario: 0.0325,
-  },
-  {
-    id: 3,
-    ingredienteNome: 'Queijo Mussarela',
-    numeroLote: 'LOT-QUEIJO-01',
-    quantidadeFormatada: '8.00 kg',
-    diasRestantes: 3,
-    dataValidade: '2026-09-24',
-    criticidade: CriticidadeLote.ATENCAO,
-    custoUnitario: 0.038,
-  },
-  {
-    id: 4,
-    ingredienteNome: 'Alface Americana',
-    numeroLote: 'LOT-ALFACE-01',
-    quantidadeFormatada: '3.50 kg',
-    diasRestantes: 1,
-    dataValidade: '2026-09-22',
-    criticidade: CriticidadeLote.CRITICO,
-    custoUnitario: 0.008,
-  },
-  {
-    id: 5,
-    ingredienteNome: 'Tomate',
-    numeroLote: 'LOT-TOMATE-01',
-    quantidadeFormatada: '5.00 kg',
-    diasRestantes: 5,
-    dataValidade: '2026-09-26',
-    criticidade: CriticidadeLote.ATENCAO,
-    custoUnitario: 0.0065,
-  },
-  {
-    id: 6,
-    ingredienteNome: 'Massa de Pizza',
-    numeroLote: 'LOT-MASSA-01',
-    quantidadeFormatada: '20 un',
-    diasRestantes: 15,
-    dataValidade: '2026-10-06',
-    criticidade: CriticidadeLote.SEGURO,
-    custoUnitario: 0.0133,
-  },
-  {
-    id: 7,
-    ingredienteNome: 'Molho de Tomate',
-    numeroLote: 'LOT-MOLHO-01',
-    quantidadeFormatada: '4.00 kg',
-    diasRestantes: 20,
-    dataValidade: '2026-10-11',
-    criticidade: CriticidadeLote.SEGURO,
-    custoUnitario: 0.012,
-  },
-];
+const obterMensagemErro = (error) => {
+  if (error.code === 'ECONNABORTED') {
+    return 'A API demorou para responder. Verifique a rede e tente novamente.';
+  }
+
+  if (error.message === 'A API retornou um formato inesperado para a lista de lotes.') {
+    return error.message;
+  }
+
+  return error.response?.data?.erro || 'Não foi possível carregar os lotes. Verifique a conexão com a API.';
+};
 
 export default function EstoqueScreen() {
   const [lotes, setLotes] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
   const [filtro, setFiltro] = useState('TODOS');
+  const [erro, setErro] = useState('');
+  const [avisoAtualizacao, setAvisoAtualizacao] = useState('');
 
-  const carregarLotes = useCallback(async () => {
+  const carregarLotes = useCallback(async ({ preservarDados = false } = {}) => {
+    setErro('');
+    setAvisoAtualizacao('');
+
     try {
       const dados = await lotesApi.getLotes();
-      if (Array.isArray(dados) && dados.length > 0) {
-        setLotes(dados);
-      } else {
-        setLotes(DADOS_MOCK_LOTES);
+
+      if (!Array.isArray(dados)) {
+        throw new Error('A API retornou um formato inesperado para a lista de lotes.');
       }
+
+      setLotes(dados);
     } catch (error) {
-      setLotes(DADOS_MOCK_LOTES);
+      const mensagem = obterMensagemErro(error);
+
+      if (preservarDados) {
+        setAvisoAtualizacao(`${mensagem} Os dados anteriores foram mantidos.`);
+      } else {
+        setLotes([]);
+        setErro(mensagem);
+      }
     } finally {
       setCarregando(false);
       setAtualizando(false);
@@ -114,6 +65,11 @@ export default function EstoqueScreen() {
 
   const onRefresh = () => {
     setAtualizando(true);
+    carregarLotes({ preservarDados: true });
+  };
+
+  const tentarNovamente = () => {
+    setCarregando(true);
     carregarLotes();
   };
 
@@ -154,6 +110,7 @@ export default function EstoqueScreen() {
 
   const renderItem = ({ item }) => {
     const badge = obterBadgeInfo(item.criticidade, item.diasRestantes);
+    const custoPorGrama = Number(item.custoUnitario);
 
     return (
       <View style={styles.card}>
@@ -180,8 +137,10 @@ export default function EstoqueScreen() {
             <Text style={styles.infoValue}>{item.dataValidade}</Text>
           </View>
           <View style={styles.infoCol}>
-            <Text style={styles.infoLabel}>Custo Unit.</Text>
-            <Text style={styles.infoValue}>R$ {item.custoUnitario?.toFixed(2)}</Text>
+            <Text style={styles.infoLabel}>Custo/g</Text>
+            <Text style={styles.infoValue}>
+              {Number.isFinite(custoPorGrama) ? `R$ ${custoPorGrama.toFixed(4)}` : 'Não informado'}
+            </Text>
           </View>
         </View>
       </View>
@@ -193,6 +152,20 @@ export default function EstoqueScreen() {
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#6c63ff" />
         <Text style={styles.loadingText}>Carregando lotes do estoque...</Text>
+      </View>
+    );
+  }
+
+  if (erro) {
+    return (
+      <View style={styles.centerContainer}>
+        <Ionicons name="cloud-offline-outline" size={52} color="#ff5252" />
+        <Text style={styles.emptyTitle}>Falha ao carregar o estoque</Text>
+        <Text style={styles.errorText}>{erro}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={tentarNovamente}>
+          <Ionicons name="refresh" size={18} color="#ffffff" />
+          <Text style={styles.retryButtonText}>Tentar novamente</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -213,6 +186,16 @@ export default function EstoqueScreen() {
         ))}
       </View>
 
+      {avisoAtualizacao ? (
+        <View style={styles.refreshWarning}>
+          <Ionicons name="warning-outline" size={18} color="#ffb74d" />
+          <Text style={styles.refreshWarningText}>{avisoAtualizacao}</Text>
+          <TouchableOpacity onPress={onRefresh}>
+            <Text style={styles.refreshWarningAction}>Repetir</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       <FlatList
         data={lotesFiltrados}
         keyExtractor={(item) => String(item.id)}
@@ -223,7 +206,11 @@ export default function EstoqueScreen() {
           <View style={styles.emptyContainer}>
             <Ionicons name="file-tray-outline" size={48} color="#555" />
             <Text style={styles.emptyTitle}>Nenhum lote encontrado</Text>
-            <Text style={styles.emptySubtitle}>Não há insumos com os filtros selecionados.</Text>
+            <Text style={styles.emptySubtitle}>
+              {lotes.length === 0
+                ? 'O estoque ainda não possui lotes cadastrados.'
+                : 'Não há insumos com o filtro selecionado.'}
+            </Text>
           </View>
         }
       />
@@ -241,11 +228,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f0f23',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 24,
   },
   loadingText: {
     color: '#8b8ba7',
     marginTop: 12,
     fontSize: 14,
+  },
+  errorText: {
+    color: '#b8b8cc',
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 8,
+    maxWidth: 320,
+    textAlign: 'center',
+  },
+  retryButton: {
+    alignItems: 'center',
+    backgroundColor: '#6c63ff',
+    borderRadius: 8,
+    flexDirection: 'row',
+    marginTop: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
   filterRow: {
     flexDirection: 'row',
@@ -275,6 +286,27 @@ const styles = StyleSheet.create({
   },
   filterChipTextActive: {
     color: '#ffffff',
+    fontWeight: 'bold',
+  },
+  refreshWarning: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 183, 77, 0.12)',
+    borderBottomColor: 'rgba(255, 183, 77, 0.35)',
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  refreshWarningText: {
+    color: '#ffd29a',
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+    marginHorizontal: 8,
+  },
+  refreshWarningAction: {
+    color: '#ffb74d',
+    fontSize: 12,
     fontWeight: 'bold',
   },
   listContent: {
