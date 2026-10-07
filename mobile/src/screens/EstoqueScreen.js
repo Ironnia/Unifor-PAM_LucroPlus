@@ -76,14 +76,14 @@ export default function EstoqueScreen() {
   const lotesFiltrados = lotes.filter((lote) => {
     if (filtro === 'CRITICO') return lote.criticidade === CriticidadeLote.CRITICO;
     if (filtro === 'ATENCAO') return lote.criticidade === CriticidadeLote.ATENCAO;
-    if (filtro === 'SEGURO') return lote.criticidade === CriticidadeLote.SEGURO;
+    if (filtro === 'SAUDAVEL') return lote.criticidade === CriticidadeLote.SAUDAVEL;
     return true;
   });
 
   const obterBadgeInfo = (criticidade, dias) => {
     if (criticidade === CriticidadeLote.CRITICO) {
       return {
-        texto: dias <= 0 ? 'Vence HOJE' : dias === 1 ? '1 dia restante' : `${dias} dias restantes`,
+        texto: dias < 0 ? `Prazo encerrado há ${Math.abs(dias)} dia(s)` : dias === 0 ? 'Prazo de venda hoje' : dias === 1 ? 'Prazo de venda amanhã' : `${dias} dias até o prazo de venda`,
         corTexto: '#ff5252',
         bg: 'rgba(255, 82, 82, 0.15)',
         borda: '#ff5252',
@@ -92,7 +92,7 @@ export default function EstoqueScreen() {
     }
     if (criticidade === CriticidadeLote.ATENCAO) {
       return {
-        texto: `${dias} dias restantes`,
+        texto: `${dias} dias até o prazo de venda`,
         corTexto: '#ffb74d',
         bg: 'rgba(255, 183, 77, 0.15)',
         borda: '#ffb74d',
@@ -100,7 +100,7 @@ export default function EstoqueScreen() {
       };
     }
     return {
-      texto: `${dias} dias restantes`,
+      texto: `${dias} dias até o prazo de venda`,
       corTexto: '#00e676',
       bg: 'rgba(0, 230, 118, 0.15)',
       borda: '#00e676',
@@ -109,7 +109,7 @@ export default function EstoqueScreen() {
   };
 
   const renderItem = ({ item }) => {
-    const badge = obterBadgeInfo(item.criticidade, item.diasRestantes);
+    const badge = obterBadgeInfo(item.criticidade, item.diasParaPrazoLimite);
     const custoPorGrama = Number(item.custoUnitario);
 
     return (
@@ -173,14 +173,14 @@ export default function EstoqueScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.filterRow}>
-        {['TODOS', 'CRITICO', 'ATENCAO', 'SEGURO'].map((f) => (
+        {['TODOS', 'CRITICO', 'ATENCAO', 'SAUDAVEL'].map((f) => (
           <TouchableOpacity
             key={f}
             style={[styles.filterChip, filtro === f && styles.filterChipActive]}
             onPress={() => setFiltro(f)}
           >
             <Text style={[styles.filterChipText, filtro === f && styles.filterChipTextActive]}>
-              {f === 'TODOS' ? 'Todos' : f === 'CRITICO' ? '🔴 Críticos' : f === 'ATENCAO' ? '🟡 Atenção' : '🟢 Seguros'}
+              {f === 'TODOS' ? 'Todos' : f === 'CRITICO' ? '🔴 Críticos' : f === 'ATENCAO' ? '🟡 Atenção' : '🟢 Saudáveis'}
             </Text>
           </TouchableOpacity>
         ))}

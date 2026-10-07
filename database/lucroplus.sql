@@ -205,15 +205,15 @@ ON DUPLICATE KEY UPDATE unidade = VALUES(unidade);
 -- Lotes Ativos (Valores de peso estritamente em gramas: quantidade_g)
 -- 11 lotes cadastrados com prazos variados (crítico <= 2 dias, atenção 3-5 dias, seguro > 5 dias)
 INSERT INTO tb_lote (ingrediente_id, quantidade_g, custo_unitario, data_validade, data_entrada, numero_lote, observacao)
-VALUES (1, 4000, 0.0150, DATE_ADD(CURDATE(), INTERVAL 4 DAY), CURDATE(), 'LOT-PAO-01', 'Lote de pão fresco'),
+VALUES (1, 4000, 0.0150, DATE_ADD(CURDATE(), INTERVAL 15 DAY), CURDATE(), 'LOT-PAO-01', 'Lote de pão fresco'),
        (2, 10000, 0.0325, DATE_ADD(CURDATE(), INTERVAL 2 DAY), CURDATE(), 'LOT-CARNE-01', 'Carne em risco de validade'),
        (3, 8000, 0.0380, DATE_ADD(CURDATE(), INTERVAL 3 DAY), CURDATE(), 'LOT-QUEIJO-01', 'Queijo mussarela'),
        (4, 3500, 0.0080, DATE_ADD(CURDATE(), INTERVAL 1 DAY), CURDATE(), 'LOT-ALFACE-01', 'Alface em vencimento crítico'),
-       (5, 5000, 0.0065, DATE_ADD(CURDATE(), INTERVAL 5 DAY), CURDATE(), 'LOT-TOMATE-01', 'Tomate maduro'),
-       (6, 6000, 0.0133, DATE_ADD(CURDATE(), INTERVAL 15 DAY), CURDATE(), 'LOT-MASSA-01', 'Massa pré-assada'),
+       (5, 5000, 0.0065, DATE_ADD(CURDATE(), INTERVAL 9 DAY), CURDATE(), 'LOT-TOMATE-01', 'Tomate maduro'),
+       (6, 6000, 0.0133, DATE_ADD(CURDATE(), INTERVAL 16 DAY), CURDATE(), 'LOT-MASSA-01', 'Massa pré-assada'),
        (7, 4000, 0.0120, DATE_ADD(CURDATE(), INTERVAL 20 DAY), CURDATE(), 'LOT-MOLHO-01', 'Molho caseiro'),
        (8, 1000, 0.0250, DATE_ADD(CURDATE(), INTERVAL 2 DAY), CURDATE(), 'LOT-MANJ-01', 'Ervas frescas'),
-       (9, 25000, 0.0045, DATE_ADD(CURDATE(), INTERVAL 7 DAY), CURDATE(), 'LOT-LARANJA-01', 'Frutas da estação'),
+       (9, 25000, 0.0045, DATE_ADD(CURDATE(), INTERVAL 8 DAY), CURDATE(), 'LOT-LARANJA-01', 'Frutas da estação'),
        (2, 5000, 0.0330, DATE_ADD(CURDATE(), INTERVAL 10 DAY), CURDATE(), 'LOT-CARNE-02', 'Lote reserva carne'),
        (3, 4000, 0.0375, DATE_ADD(CURDATE(), INTERVAL 12 DAY), CURDATE(), 'LOT-QUEIJO-02', 'Lote reserva queijo');
 

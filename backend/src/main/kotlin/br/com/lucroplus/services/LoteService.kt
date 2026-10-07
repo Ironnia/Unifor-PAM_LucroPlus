@@ -7,7 +7,6 @@ import br.com.lucroplus.models.LoteItemDto
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.selectAll
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 object LoteService {
@@ -16,6 +15,7 @@ object LoteService {
 
         (LotesTable innerJoin IngredientesTable)
             .selectAll()
+            .where { LotesTable.quantidadeG greater 0 }
             .orderBy(LotesTable.dataValidade, SortOrder.ASC)
             .map { row ->
                 val id = row[LotesTable.id]
@@ -31,14 +31,9 @@ object LoteService {
                 val observacao = row[LotesTable.observacao]
 
                 val validadeJava = LocalDate.parse(dataValidadeKmp.toString())
-                val diasRestantes = ChronoUnit.DAYS.between(hojeJava, validadeJava).toInt()
-
-                // lembrete: se faltar 2 dias ou menos ja considera critico
-                val criticidade = when {
-                    diasRestantes <= 2 -> "CRITICO"
-                    diasRestantes <= 5 -> "ATENCAO"
-                    else -> "SEGURO"
-                }
+                val prazoLimiteVenda = RegraValidadeLote.prazoLimiteVenda(validadeJava)
+                val diasRestantes = RegraValidadeLote.diasAtePrazo(validadeJava, hojeJava)
+                val criticidade = RegraValidadeLote.criticidade(diasRestantes)
 
                 val quantidadeFormatada = when (unidade.lowercase()) {
                     "kg" -> String.format(Locale.US, "%.2f kg", quantidadeG / 1000.0)
@@ -60,6 +55,8 @@ object LoteService {
                     numeroLote = numeroLote,
                     observacao = observacao,
                     diasRestantes = diasRestantes,
+                    prazoLimiteVenda = prazoLimiteVenda.toString(),
+                    diasParaPrazoLimite = diasRestantes,
                     criticidade = criticidade
                 )
             }

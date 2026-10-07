@@ -16,5 +16,7 @@ data class LoteItemDto(
     val numeroLote: String,
     val observacao: String? = null,
     val diasRestantes: Int,
-    val criticidade: String
+    val prazoLimiteVenda: String,
+    val diasParaPrazoLimite: Int,
+    val criticidade: String // "CRITICO", "ATENCAO", "SAUDAVEL"
 )
