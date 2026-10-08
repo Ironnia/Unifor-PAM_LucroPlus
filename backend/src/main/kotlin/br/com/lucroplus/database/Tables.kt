@@ -97,7 +97,16 @@ object AlertasTable : Table("tb_alerta") {
     val dataAlerta = date("data_alerta")
     val visualizado = bool("visualizado").default(false)
 
+    init { uniqueIndex("uq_alerta_lote_tipo", loteId, tipo) }
     override val primaryKey = PrimaryKey(id)
+}
+
+object AcoesAlertaTable : Table("tb_acao_alerta") {
+    val loteId = long("lote_id").references(LotesTable.id)
+    val alertaId = long("alerta_id").references(AlertasTable.id).uniqueIndex()
+    val acao = varchar("acao", 20)
+    val dataAcao = date("data_acao")
+    override val primaryKey = PrimaryKey(loteId)
 }
 
 object ConfiguracoesTable : Table("tb_configuracao") {

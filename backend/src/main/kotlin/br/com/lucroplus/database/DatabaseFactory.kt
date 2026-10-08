@@ -57,6 +57,7 @@ object DatabaseFactory {
                         ItensVendaTable,
                         PromocoesTable,
                         AlertasTable,
+                        AcoesAlertaTable,
                         ConfiguracoesTable
                     )
 

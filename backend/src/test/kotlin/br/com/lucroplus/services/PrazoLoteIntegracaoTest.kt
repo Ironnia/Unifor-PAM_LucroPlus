@@ -13,6 +13,7 @@ class PrazoLoteIntegracaoTest {
     @Test
     fun `lotes e alertas concordam nas bordas e repeticao nao duplica`() = runBlocking {
         val banco = Database.connect("jdbc:h2:mem:prazo35;MODE=MySQL;DB_CLOSE_DELAY=-1", "org.h2.Driver")
+        org.jetbrains.exposed.sql.transactions.TransactionManager.defaultDatabase = banco
         val hoje = LocalDate.now()
         val dias = listOf(-1, 0, 7, 8, 14, 15)
         transaction(banco) {
@@ -51,3 +52,4 @@ class PrazoLoteIntegracaoTest {
         transaction(banco) { assertEquals(4L, AlertasTable.selectAll().count()) }
     }
 }
+

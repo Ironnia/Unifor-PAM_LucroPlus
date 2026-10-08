@@ -2,14 +2,20 @@ package br.com.lucroplus.routes
 
 import br.com.lucroplus.models.ErrorResponse
 import br.com.lucroplus.models.MessageResponse
+import br.com.lucroplus.services.AlertaOperacoes
+import br.com.lucroplus.services.AlertaService
 import br.com.lucroplus.services.MotorPromocaoService
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Route.promocaoRoutes() {
+fun Route.promocaoRoutes(operacoes: AlertaOperacoes = AlertaService) {
     route("/promocoes") {
+        authenticate("auth-jwt") {
+            get("/pendentes") { call.respond(HttpStatusCode.OK, operacoes.listarLotesPendentes()) }
+        }
         get("/sugestoes") {
             val sugestoes = MotorPromocaoService.listarSugestoes()
             call.respond(HttpStatusCode.OK, sugestoes)

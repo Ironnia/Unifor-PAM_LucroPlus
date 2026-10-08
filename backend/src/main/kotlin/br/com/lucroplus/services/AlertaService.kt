@@ -1,5 +1,6 @@
 package br.com.lucroplus.services
 
+import br.com.lucroplus.database.AcoesAlertaTable
 import br.com.lucroplus.database.AlertasTable
 import br.com.lucroplus.database.DatabaseFactory.dbQuery
 import br.com.lucroplus.database.IngredientesTable
@@ -7,23 +8,35 @@ import br.com.lucroplus.database.LotesTable
 import br.com.lucroplus.models.AlertaDto
 import br.com.lucroplus.models.IngredienteResumoDto
 import br.com.lucroplus.models.LoteResumoDto
+import br.com.lucroplus.models.LotePendentePromocaoDto
 import kotlinx.datetime.toKotlinLocalDate
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import java.time.LocalDate
 
-object AlertaService {
+enum class AcaoAlerta { SALVAR_LOTE, CIENTE }
+enum class ResultadoAcaoAlerta { CONCLUIDA, JA_APLICADA, CONFLITO, NAO_ENCONTRADO }
 
+interface AlertaOperacoes {
+    suspend fun obterAlertasVencimento(): List<AlertaDto>
+    suspend fun executarAcao(alertaId: Long, acao: AcaoAlerta): ResultadoAcaoAlerta
+    suspend fun listarLotesPendentes(): List<LotePendentePromocaoDto>
+}
 
-    suspend fun obterAlertasVencimento(): List<AlertaDto> = dbQuery {
+object AlertaService : AlertaOperacoes {
+
+    override suspend fun obterAlertasVencimento(): List<AlertaDto> = dbQuery {
         val hojeJava = LocalDate.now()
         val dataLimiteJava = RegraValidadeLote.validadeMaxima(hojeJava)
 
         val hojeKmp = hojeJava.toKotlinLocalDate()
         val validadeMinimaKmp = RegraValidadeLote.validadeMinima(hojeJava).toKotlinLocalDate()
         val dataLimiteKmp = dataLimiteJava.toKotlinLocalDate()
+
+        // busca lotes proximos do vencimento
         val lotesEmRisco = (LotesTable innerJoin IngredientesTable)
             .selectAll()
             .where {
@@ -31,12 +44,16 @@ object AlertaService {
                     (LotesTable.dataValidade lessEq dataLimiteKmp) and
                     (LotesTable.quantidadeG greater 0)
             }
+            .orderBy(LotesTable.id, SortOrder.ASC)
+            .forUpdate()
             .toList()
+
+        // cria alerta se nao existir
         for (row in lotesEmRisco) {
             val loteId = row[LotesTable.id]
             val validadeKmp = row[LotesTable.dataValidade]
             val validadeJava = LocalDate.parse(validadeKmp.toString())
-            val diasParaVencer = RegraValidadeLote.diasAtePrazo(validadeJava, hojeJava)
+            val diasParaPrazo = RegraValidadeLote.diasAtePrazo(validadeJava, hojeJava)
 
             val alertaExiste = AlertasTable
                 .selectAll()
@@ -48,7 +65,7 @@ object AlertaService {
                 val quantidade = row[LotesTable.quantidadeG]
                 val numeroLote = row[LotesTable.numeroLote] ?: "LOT-$loteId"
 
-                val mensagem = mensagemValidade(numeroLote, ingredienteNome, quantidade, diasParaVencer)
+                val mensagem = mensagemValidade(numeroLote, ingredienteNome, quantidade, diasParaPrazo)
 
                 AlertasTable.insert {
                     it[AlertasTable.loteId] = loteId
@@ -59,6 +76,8 @@ object AlertaService {
                 }
             }
         }
+
+        // lista alertas pendentes
         (AlertasTable innerJoin LotesTable innerJoin IngredientesTable)
             .selectAll()
             .where {
@@ -117,11 +136,64 @@ object AlertaService {
         return "O lote $numeroLote de $ingredienteNome ($quantidadeG g) $prazo. $nivel."
     }
 
+    // trava o lote para evitar acoes concorrentes duplicadas
+    override suspend fun executarAcao(alertaId: Long, acao: AcaoAlerta): ResultadoAcaoAlerta = dbQuery {
+        val alertaInicial = AlertasTable.selectAll()
+            .where { (AlertasTable.id eq alertaId) and (AlertasTable.tipo eq "VENCIMENTO") }
+            .singleOrNull() ?: return@dbQuery ResultadoAcaoAlerta.NAO_ENCONTRADO
+        val loteId = alertaInicial[AlertasTable.loteId]
 
-    suspend fun marcarComoVisualizado(alertaId: Long): Boolean = dbQuery {
-        val rowsUpdated = AlertasTable.update({ AlertasTable.id eq alertaId }) {
+        val lote = LotesTable.selectAll().where { LotesTable.id eq loteId }
+            .forUpdate().singleOrNull() ?: return@dbQuery ResultadoAcaoAlerta.NAO_ENCONTRADO
+        val alerta = AlertasTable.selectAll().where { AlertasTable.id eq alertaId }
+            .forUpdate().singleOrNull() ?: return@dbQuery ResultadoAcaoAlerta.NAO_ENCONTRADO
+        val decisao = AcoesAlertaTable.selectAll()
+            .where { AcoesAlertaTable.loteId eq loteId }.forUpdate().singleOrNull()
+        if (decisao != null) {
+            return@dbQuery if (decisao[AcoesAlertaTable.acao] == acao.name) {
+                ResultadoAcaoAlerta.JA_APLICADA
+            } else {
+                ResultadoAcaoAlerta.CONFLITO
+            }
+        }
+        if (alerta[AlertasTable.visualizado] ||
+            lote[LotesTable.quantidadeG] <= 0 ||
+            RegraValidadeLote.prazoLimiteVenda(LocalDate.parse(lote[LotesTable.dataValidade].toString())).isBefore(LocalDate.now())
+        ) {
+            return@dbQuery ResultadoAcaoAlerta.CONFLITO
+        }
+
+        AcoesAlertaTable.insert {
+            it[AcoesAlertaTable.loteId] = loteId
+            it[AcoesAlertaTable.alertaId] = alertaId
+            it[AcoesAlertaTable.acao] = acao.name
+            it[AcoesAlertaTable.dataAcao] = LocalDate.now().toKotlinLocalDate()
+        }
+        // marca como visualizado
+        AlertasTable.update({ (AlertasTable.loteId eq loteId) and (AlertasTable.tipo eq "VENCIMENTO") }) {
             it[visualizado] = true
         }
-        rowsUpdated > 0
+        ResultadoAcaoAlerta.CONCLUIDA
+    }
+
+    override suspend fun listarLotesPendentes(): List<LotePendentePromocaoDto> = dbQuery {
+        (AcoesAlertaTable innerJoin LotesTable innerJoin IngredientesTable)
+            .selectAll()
+            .where { AcoesAlertaTable.acao eq AcaoAlerta.SALVAR_LOTE.name }
+            .orderBy(LotesTable.dataValidade, SortOrder.ASC)
+            .map { row ->
+                val validade = LocalDate.parse(row[LotesTable.dataValidade].toString())
+                LotePendentePromocaoDto(
+                    alertaId = row[AcoesAlertaTable.alertaId],
+                    loteId = row[LotesTable.id],
+                    numeroLote = row[LotesTable.numeroLote] ?: "LOT-${row[LotesTable.id]}",
+                    ingredienteNome = row[IngredientesTable.nome],
+                    prazoLimiteVenda = RegraValidadeLote.prazoLimiteVenda(validade).toString(),
+                    criticidade = RegraValidadeLote.criticidade(
+                        RegraValidadeLote.diasAtePrazo(validade, LocalDate.now())
+                    ),
+                    dataAcao = row[AcoesAlertaTable.dataAcao].toString()
+                )
+            }
     }
 }
