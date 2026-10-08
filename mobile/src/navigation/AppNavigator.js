@@ -7,9 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import EstoqueScreen from '../screens/EstoqueScreen';
-import PromocoesScreen from '../screens/PromocoesScreen';
+import AlertasScreen from '../screens/AlertasScreen';
 import ConfiguracoesScreen from '../screens/ConfiguracoesScreen';
-import { authApi, subscribeToUnauthorized } from '../services/api';
+import { alertasApi, authApi, subscribeToUnauthorized } from '../services/api';
 
 const Tab = createBottomTabNavigator();
 
@@ -18,11 +18,13 @@ export default function AppNavigator() {
   const [restoringSession, setRestoringSession] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
   const [sessionMessage, setSessionMessage] = useState(null);
+  const [alertCount, setAlertCount] = useState(0);
 
   useEffect(() => {
     let active = true;
     const unsubscribe = subscribeToUnauthorized((message) => {
       if (!active) return;
+      setAlertCount(0);
       setSessionMessage(message);
       setIsAuthenticated(false);
     });
@@ -37,11 +39,21 @@ export default function AppNavigator() {
     return () => { active = false; unsubscribe(); };
   }, []);
 
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let active = true;
+    alertasApi.getAtivos()
+      .then((dados) => { if (active && Array.isArray(dados)) setAlertCount(dados.length); })
+      .catch(() => { if (active) setAlertCount(0); });
+    return () => { active = false; };
+  }, [isAuthenticated]);
+
   const handleLogout = async () => {
     if (loggingOut) return;
     setLoggingOut(true);
     try {
       await authApi.logout();
+      setAlertCount(0);
       setSessionMessage(null);
       setIsAuthenticated(false);
     } catch (_) {
@@ -73,8 +85,8 @@ export default function AppNavigator() {
               iconName = focused ? 'home' : 'home-outline';
             } else if (route.name === 'Estoque') {
               iconName = focused ? 'cube' : 'cube-outline';
-            } else if (route.name === 'Promoções') {
-              iconName = focused ? 'pricetag' : 'pricetag-outline';
+            } else if (route.name === 'Alertas') {
+              iconName = focused ? 'notifications' : 'notifications-outline';
             } else if (route.name === 'Configurações') {
               iconName = focused ? 'settings' : 'settings-outline';
             }
@@ -106,7 +118,9 @@ export default function AppNavigator() {
       >
         <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Dashboard' }} />
         <Tab.Screen name="Estoque" component={EstoqueScreen} />
-        <Tab.Screen name="Promoções" component={PromocoesScreen} />
+        <Tab.Screen name="Alertas" options={{ title: 'Alertas & Ações', tabBarLabel: 'Alertas', tabBarBadge: alertCount > 0 ? alertCount : undefined }}>
+          {() => <AlertasScreen onCountChange={setAlertCount} />}
+        </Tab.Screen>
         <Tab.Screen name="Configurações" component={ConfiguracoesScreen} />
       </Tab.Navigator>
     </NavigationContainer>

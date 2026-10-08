@@ -44,6 +44,7 @@ class PrazoLoteIntegracaoTest {
         assertEquals(listOf(0, 7, 8, 14), alertas.map { it.diasParaPrazoLimite })
         alertas.forEach { alerta ->
             val lote = lotes.single { it.id == alerta.loteId }
+            assertEquals(lote.dataValidade, alerta.dataValidade)
             assertEquals(lote.prazoLimiteVenda, alerta.prazoLimiteVenda)
             assertEquals(lote.criticidade, alerta.criticidade)
             assertTrue(alerta.mensagem.contains("prazo limite de venda"))

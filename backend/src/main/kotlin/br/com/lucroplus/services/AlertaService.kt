@@ -113,6 +113,7 @@ object AlertaService : AlertaOperacoes {
                     ),
                     dataAlerta = it[AlertasTable.dataAlerta].toString(),
                     visualizado = it[AlertasTable.visualizado],
+                    dataValidade = validadeJava.toString(),
                     prazoLimiteVenda = RegraValidadeLote.prazoLimiteVenda(validadeJava).toString(),
                     diasParaPrazoLimite = diasParaPrazo,
                     criticidade = RegraValidadeLote.criticidade(diasParaPrazo),

@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "test:session": "node tests/session.test.cjs"
+    "test:session": "node tests/session.test.cjs",
+    "test:alertas": "node tests/alertas.test.cjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",

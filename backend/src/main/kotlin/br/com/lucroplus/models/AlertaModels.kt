@@ -24,6 +24,7 @@ data class AlertaDto(
     val mensagem: String,
     val dataAlerta: String,
     val visualizado: Boolean = false,
+    val dataValidade: String,
     val prazoLimiteVenda: String,
     val diasParaPrazoLimite: Int,
     val criticidade: String,

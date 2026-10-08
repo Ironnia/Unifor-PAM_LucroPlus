@@ -123,6 +123,16 @@ export const lotesApi = {
   },
 };
 
+export const alertasApi = {
+  getAtivos: async () => (await client.get('/alertas/vencimento')).data,
+  salvarLote: async (alertaId) => (await client.patch(`/alertas/${alertaId}/salvar-lote`)).data,
+  marcarCiente: async (alertaId) => (await client.patch(`/alertas/${alertaId}/ciente`)).data,
+};
+
+export const promocoesApi = {
+  getPendentes: async () => (await client.get('/promocoes/pendentes')).data,
+};
+
 export const pdvApi = {
   testarConexao: async (dados) => {
     const response = await client.post('/configuracoes/pdv/testar-conexao', dados);
