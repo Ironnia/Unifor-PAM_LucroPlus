@@ -66,6 +66,8 @@ class AlertaRoutesTest {
         assertEquals(HttpStatusCode.Unauthorized, client.get("/alertas/vencimento").status)
         assertEquals(HttpStatusCode.Unauthorized, client.patch("/alertas/1/salvar-lote").status)
         assertEquals(HttpStatusCode.Unauthorized, client.get("/promocoes/pendentes").status)
+        assertEquals(HttpStatusCode.Unauthorized, client.get("/promocoes/previas").status)
+        assertEquals(HttpStatusCode.Unauthorized, client.get("/promocoes/sugestoes").status)
     }
 
     @Test

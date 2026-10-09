@@ -131,6 +131,7 @@ export const alertasApi = {
 
 export const promocoesApi = {
   getPendentes: async () => (await client.get('/promocoes/pendentes')).data,
+  getPrevias: async () => (await client.get('/promocoes/previas')).data,
 };
 
 export const pdvApi = {

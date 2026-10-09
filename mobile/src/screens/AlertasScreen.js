@@ -7,7 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { alertasApi, promocoesApi } from '../services/api';
 import {
-  FILTROS_ALERTA, contarAlertas, filtrarAlertas, formatarData,
+  FILTROS_ALERTA, associarPrevias, contarAlertas, filtrarAlertas, formatarData,
   formatarQuantidade, textoPrazo, textoPrevia, validarListaAlertas,
 } from './alertasViewModel';
 
@@ -41,7 +41,15 @@ export default function AlertasScreen({ onCountChange }) {
     setErro('');
     setAviso('');
     try {
-      const novos = validarListaAlertas(await alertasApi.getAtivos());
+      const ativos = validarListaAlertas(await alertasApi.getAtivos());
+      let novos = ativos;
+      if (ativos.length) {
+        try {
+          novos = associarPrevias(ativos, await promocoesApi.getPrevias());
+        } catch (_) {
+          setAviso('Alertas carregados. A prévia de prato e dia está indisponível no momento.');
+        }
+      }
       setAlertas(novos);
       onCountChange?.(novos.length);
     } catch (error) {

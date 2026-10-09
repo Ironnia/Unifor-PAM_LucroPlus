@@ -15,10 +15,8 @@ fun Route.promocaoRoutes(operacoes: AlertaOperacoes = AlertaService) {
     route("/promocoes") {
         authenticate("auth-jwt") {
             get("/pendentes") { call.respond(HttpStatusCode.OK, operacoes.listarLotesPendentes()) }
-        }
-        get("/sugestoes") {
-            val sugestoes = MotorPromocaoService.listarSugestoes()
-            call.respond(HttpStatusCode.OK, sugestoes)
+            get("/previas") { call.respond(HttpStatusCode.OK, MotorPromocaoService.listarPrevias()) }
+            get("/sugestoes") { call.respond(HttpStatusCode.OK, MotorPromocaoService.listarSugestoes()) }
         }
 
         patch("/{id}/ativar") {

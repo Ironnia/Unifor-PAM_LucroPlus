@@ -50,6 +50,16 @@ test('prévia ausente não inventa prato ou melhor dia', () => {
   assert.match(view.textoPrevia({ pratoNome: 'Prato A', melhorDia: 'sexta-feira' }), /sexta-feira/);
 });
 
+test('prévia real é associada pelo lote sem alterar a validade ou o prazo do alerta', () => {
+  const alerta = { ...alertaCritico, dataValidade: '2026-10-02', prazoLimiteVenda: '2026-10-01' };
+  const previa = { loteId: 12, pratoId: 10, pratoNome: 'Pizza', melhorDia: 'quinta-feira' };
+  const associado = view.associarPrevias([alerta], [previa]);
+  assert.deepEqual(associado[0].previaConsultiva, previa);
+  assert.equal(associado[0].dataValidade, '2026-10-02');
+  assert.equal(associado[0].prazoLimiteVenda, '2026-10-01');
+  assert.deepEqual(view.associarPrevias([alerta], [])[0].previaConsultiva, null);
+});
+
 test('cliente usa ID do alerta nas duas ações e consulta a fila persistida com Bearer', async () => {
   const chamadas = [];
   let requestInterceptor;
@@ -60,7 +70,9 @@ test('cliente usa ID do alerta nas duas ações e consulta a fila persistida com
     },
     get: async (url) => {
       chamadas.push(requestInterceptor({ url, headers: {} }));
-      return { data: url === '/alertas/vencimento' ? [alertaCritico] : [{ alertaId: 5, loteId: 12 }] };
+      return { data: url === '/alertas/vencimento' ? [alertaCritico] :
+        url === '/promocoes/previas' ? [{ loteId: 12, pratoId: 10, pratoNome: 'Pizza' }] :
+          [{ alertaId: 5, loteId: 12 }] };
     },
     patch: async (url) => {
       chamadas.push(requestInterceptor({ url, headers: {} }));
@@ -77,9 +89,11 @@ test('cliente usa ID do alerta nas duas ações e consulta a fila persistida com
   assert.deepEqual(await api.alertasApi.getAtivos(), [alertaCritico]);
   await api.alertasApi.salvarLote(5);
   await api.alertasApi.marcarCiente(6);
+  assert.deepEqual(await api.promocoesApi.getPrevias(), [{ loteId: 12, pratoId: 10, pratoNome: 'Pizza' }]);
   assert.deepEqual(await api.promocoesApi.getPendentes(), [{ alertaId: 5, loteId: 12 }]);
   assert.deepEqual(chamadas.map((item) => item.url), [
-    '/alertas/vencimento', '/alertas/5/salvar-lote', '/alertas/6/ciente', '/promocoes/pendentes',
+    '/alertas/vencimento', '/alertas/5/salvar-lote', '/alertas/6/ciente',
+    '/promocoes/previas', '/promocoes/pendentes',
   ]);
   assert.ok(chamadas.every((item) => item.headers.Authorization === 'Bearer jwt-de-teste'));
 });

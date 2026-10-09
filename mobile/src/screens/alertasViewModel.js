@@ -8,6 +8,19 @@ export function validarListaAlertas(dados) {
   return dados;
 }
 
+export function associarPrevias(alertas, previas) {
+  if (!Array.isArray(previas)) throw new Error('A API retornou um formato inesperado para as prévias.');
+  const porLote = new Map();
+  for (const previa of previas) {
+    if (!Number.isInteger(previa?.loteId) || !Number.isInteger(previa?.pratoId) ||
+        typeof previa?.pratoNome !== 'string' || !previa.pratoNome.trim()) {
+      throw new Error('A API retornou um formato inesperado para as prévias.');
+    }
+    porLote.set(previa.loteId, previa);
+  }
+  return alertas.map((alerta) => ({ ...alerta, previaConsultiva: porLote.get(alerta.loteId) || null }));
+}
+
 export function filtrarAlertas(alertas, filtro) {
   return filtro === 'TODOS' ? alertas : alertas.filter((alerta) => alerta.criticidade === filtro);
 }
