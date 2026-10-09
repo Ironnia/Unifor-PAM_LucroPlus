@@ -80,11 +80,21 @@ object ItensVendaTable : Table("tb_item_venda") {
 object PromocoesTable : Table("tb_promocao") {
     val id = long("id").autoIncrement()
     val produtoId = long("produto_id").references(ProdutosTable.id)
-    val descontoPct = integer("desconto_pct")
-    val motivo = text("motivo")
-    val status = varchar("status", 20)
+    val descontoPct = integer("desconto_pct").nullable() // Só o gerente define ao ativar.
+    val motivo = text("motivo")                           // Ex: "Lote de Queijo vence em 3 dias"
+    val status = varchar("status", 24)
     val dataSugestao = date("data_sugestao")
     val dataAtivacao = date("data_ativacao").nullable()
+    // nullable caso a promocao nao esteja associada a um lote
+    val loteId = long("lote_id").references(LotesTable.id).nullable()
+    val dataInicio = date("data_inicio").nullable()
+    val dataFim = date("data_fim").nullable()
+    val dataConfirmacao = date("data_confirmacao").nullable()
+    val quantidadeReferenciaG = integer("quantidade_referencia_g").nullable()
+    val valorEmRisco = decimal("valor_em_risco", 18, 2).nullable()
+    val valorSalvo = decimal("valor_salvo", 18, 2).default(java.math.BigDecimal.ZERO)
+
+    init { uniqueIndex("uq_promocao_lote_produto", loteId, produtoId) }
 
     override val primaryKey = PrimaryKey(id)
 }

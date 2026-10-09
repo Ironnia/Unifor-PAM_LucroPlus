@@ -1,5 +1,7 @@
 package br.com.lucroplus.services
 
+import br.com.lucroplus.database.PromocoesTable
+import br.com.lucroplus.database.ProdutosTable
 import br.com.lucroplus.database.AcoesAlertaTable
 import br.com.lucroplus.database.AlertasTable
 import br.com.lucroplus.database.IngredientesTable
@@ -19,14 +21,16 @@ import kotlin.test.assertTrue
 
 class AlertaServiceTest {
     private fun novoBanco() {
-        Database.connect(
+        val banco = Database.connect(
             "jdbc:h2:mem:alertas_test;MODE=MySQL;DB_CLOSE_DELAY=-1",
             driver = "org.h2.Driver"
         )
-        transaction {
+        org.jetbrains.exposed.sql.transactions.TransactionManager.defaultDatabase = banco
+        transaction(banco) {
             SchemaUtils.createMissingTablesAndColumns(
-                IngredientesTable, LotesTable, AlertasTable, AcoesAlertaTable
+                IngredientesTable, ProdutosTable, LotesTable, AlertasTable, AcoesAlertaTable, PromocoesTable
             )
+            PromocoesTable.deleteAll()
             AcoesAlertaTable.deleteAll()
             AlertasTable.deleteAll()
             LotesTable.deleteAll()

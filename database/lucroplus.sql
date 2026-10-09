@@ -129,15 +129,24 @@ CREATE TABLE IF NOT EXISTS tb_promocao
 (
     id            BIGINT                                 NOT NULL AUTO_INCREMENT,
     produto_id    BIGINT                                 NOT NULL,
-    desconto_pct  INTEGER                                NOT NULL,
+    desconto_pct  INTEGER                                NULL, -- Obrigatório ao ativar
     motivo        TEXT                                   NOT NULL,
-    status        ENUM ('SUGESTAO', 'ATIVA', 'RECUSADA') NOT NULL,
+    status        VARCHAR(24)                            NOT NULL,
     data_sugestao DATE                                   NOT NULL,
     data_ativacao DATE,
+    lote_id       BIGINT NULL,
+    data_inicio   DATE NULL,
+    data_fim      DATE NULL,
+    data_confirmacao DATE NULL,
+    quantidade_referencia_g INTEGER NULL,
+    valor_em_risco DECIMAL(18, 2) NULL,
+    valor_salvo   DECIMAL(18, 2) NOT NULL DEFAULT 0.00,
 
     CONSTRAINT pk_promocao PRIMARY KEY (id),
     CONSTRAINT fk_promocao_produto FOREIGN KEY (produto_id)
         REFERENCES tb_produto (id) ON DELETE CASCADE,
+    CONSTRAINT fk_promocao_lote FOREIGN KEY (lote_id) REFERENCES tb_lote (id),
+    UNIQUE KEY uq_promocao_lote_produto (lote_id, produto_id),
     INDEX idx_promocao_status (status),
     INDEX idx_promocao_data (data_sugestao),
     INDEX idx_promocao_produto (produto_id)

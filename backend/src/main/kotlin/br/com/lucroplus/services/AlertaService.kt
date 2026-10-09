@@ -4,6 +4,7 @@ import br.com.lucroplus.database.AcoesAlertaTable
 import br.com.lucroplus.database.AlertasTable
 import br.com.lucroplus.database.DatabaseFactory.dbQuery
 import br.com.lucroplus.database.IngredientesTable
+import br.com.lucroplus.database.PromocoesTable
 import br.com.lucroplus.database.LotesTable
 import br.com.lucroplus.models.AlertaDto
 import br.com.lucroplus.models.IngredienteResumoDto
@@ -178,10 +179,14 @@ object AlertaService : AlertaOperacoes {
     }
 
     override suspend fun listarLotesPendentes(): List<LotePendentePromocaoDto> = dbQuery {
+        val encaminhados = PromocoesTable.selectAll().where {
+            PromocoesTable.status inList listOf("EM_ANDAMENTO", "CONCLUIDA_SUCESSO", "EXPIRADA_COM_PERDA", "RECUSADA")
+        }.mapNotNull { it[PromocoesTable.loteId] }.toSet()
         (AcoesAlertaTable innerJoin LotesTable innerJoin IngredientesTable)
             .selectAll()
             .where { AcoesAlertaTable.acao eq AcaoAlerta.SALVAR_LOTE.name }
             .orderBy(LotesTable.dataValidade, SortOrder.ASC)
+            .filter { it[LotesTable.id] !in encaminhados }
             .map { row ->
                 val validade = LocalDate.parse(row[LotesTable.dataValidade].toString())
                 LotePendentePromocaoDto(

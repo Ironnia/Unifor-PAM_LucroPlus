@@ -1,52 +1,71 @@
 package br.com.lucroplus.routes
 
-import br.com.lucroplus.models.ErrorResponse
-import br.com.lucroplus.models.MessageResponse
-import br.com.lucroplus.services.AlertaOperacoes
-import br.com.lucroplus.services.AlertaService
-import br.com.lucroplus.services.MotorPromocaoService
+import br.com.lucroplus.models.*
+import br.com.lucroplus.services.*
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
+import io.ktor.server.plugins.BadRequestException
+import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Route.promocaoRoutes(operacoes: AlertaOperacoes = AlertaService) {
-    route("/promocoes") {
-        authenticate("auth-jwt") {
-            get("/pendentes") { call.respond(HttpStatusCode.OK, operacoes.listarLotesPendentes()) }
-            get("/previas") { call.respond(HttpStatusCode.OK, MotorPromocaoService.listarPrevias()) }
-            get("/sugestoes") { call.respond(HttpStatusCode.OK, MotorPromocaoService.listarSugestoes()) }
-        }
-
-        patch("/{id}/ativar") {
-            val idParam = call.parameters["id"]?.toLongOrNull()
-            if (idParam == null) {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse("ID de promoção inválido"))
-                return@patch
+// rotas autenticadas de promocoes
+fun Route.promocaoRoutes(
+    operacoes: AlertaOperacoes = AlertaService,
+    ciclo: PromocaoOperacoes = CicloPromocaoService()
+) {
+    authenticate("auth-jwt") {
+        route("/promocoes") {
+            get("/pendentes") { call.respond(operacoes.listarLotesPendentes()) }
+            get("/previas") { call.respond(MotorPromocaoService.listarPrevias()) }
+            get("/sugestoes") { call.respond(MotorPromocaoService.listarSugestoes()) }
+            get {
+                call.responderPromocao {
+                    val filtro = call.request.queryParameters["status"]
+                    val status = filtro?.let { valor ->
+                        StatusPromocao.entries.find { it.name == valor }
+                            ?: throw ErroPromocao(400, "Status inválido")
+                    }
+                    call.respond(ciclo.listar(status))
+                }
             }
-
-            val sucesso = MotorPromocaoService.ativarPromocao(idParam)
-            if (sucesso) {
-                call.respond(HttpStatusCode.OK, MessageResponse("Promoção ativada com sucesso!"))
-            } else {
-                call.respond(HttpStatusCode.NotFound, ErrorResponse("Promoção não encontrada"))
+            get("/resumo") { call.responderPromocao { call.respond(ciclo.resumo()) } }
+            patch("/pendentes/{loteId}/descartar") {
+                call.responderPromocao {
+                    val loteId = call.parameters["loteId"]?.toLongOrNull()?.takeIf { it > 0 }
+                        ?: throw ErroPromocao(400, "ID de lote inválido")
+                    ciclo.descartarPendente(loteId)
+                    call.respond(MessageResponse("Pendência descartada"))
+                }
             }
-        }
-
-        patch("/{id}/recusar") {
-            val idParam = call.parameters["id"]?.toLongOrNull()
-            if (idParam == null) {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse("ID de promoção inválido"))
-                return@patch
+            post {
+                call.responderPromocao {
+                    call.respond(HttpStatusCode.OK, ciclo.criar(call.receive<CriarPromocaoRequest>()))
+                }
             }
-
-            val sucesso = MotorPromocaoService.recusarPromocao(idParam)
-            if (sucesso) {
-                call.respond(HttpStatusCode.OK, MessageResponse("Promoção recusada."))
-            } else {
-                call.respond(HttpStatusCode.NotFound, ErrorResponse("Promoção não encontrada"))
+            patch("/{id}/ativar") {
+                call.responderPromocao {
+                    call.respond(ciclo.ativar(call.promocaoId(), call.receive<AtivarPromocaoRequest>()))
+                }
+            }
+            patch("/{id}/recusar") {
+                call.responderPromocao { call.respond(ciclo.recusar(call.promocaoId())) }
+            }
+            patch("/{id}/confirmar") {
+                call.responderPromocao {
+                    call.respond(ciclo.confirmar(call.promocaoId(), call.receive<ConfirmarPromocaoRequest>()))
+                }
             }
         }
     }
+}
+
+private fun ApplicationCall.promocaoId(): Long = parameters["id"]?.toLongOrNull()?.takeIf { it > 0 }
+    ?: throw ErroPromocao(400, "ID de promoção inválido")
+
+private suspend fun ApplicationCall.responderPromocao(bloco: suspend () -> Unit) {
+    try { bloco() }
+    catch (erro: ErroPromocao) { respond(HttpStatusCode.fromValue(erro.codigo), ErrorResponse(erro.message)) }
+    catch (_: BadRequestException) { respond(HttpStatusCode.BadRequest, ErrorResponse("Corpo JSON inválido ou incompleto")) }
 }

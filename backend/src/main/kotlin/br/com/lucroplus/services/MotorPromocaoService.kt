@@ -29,7 +29,8 @@ object MotorPromocaoService {
                     LocalDate.parse(row[LotesTable.dataValidade].toString()), row[LotesTable.custoUnitario]
                 )
             }
-        calcularSugestoes(lotesSalvos, hoje)
+        val encaminhados = PromocoesTable.selectAll().mapNotNull { it[PromocoesTable.loteId] }.toSet()
+        calcularSugestoes(lotesSalvos.filter { it.id !in encaminhados }, hoje)
     }
 
     suspend fun listarPrevias(hoje: LocalDate = LocalDate.now()): List<PreviaPromocaoDto> = dbQuery {
@@ -84,7 +85,7 @@ object MotorPromocaoService {
             .orderBy(LotesTable.dataEntrada to SortOrder.ASC, LotesTable.id to SortOrder.ASC)
             .map { it[LotesTable.ingredienteId] to it[LotesTable.custoUnitario] }
             .groupBy({ it.first }, { it.second })
-            .mapValues { it.value.first() } // Referência de custo pelo primeiro lote disponível na ordem FIFO.
+            .mapValues { it.value.first() } // primeiro lote fifo
         val pesosPorUnidade = IngredientesTable.selectAll()
             .associate { it[IngredientesTable.id] to it[IngredientesTable.pesoPorUnidadeG] }
 
@@ -153,19 +154,7 @@ object MotorPromocaoService {
         }.sortedWith(compareBy<SugestaoPromocaoDto> { it.prazoLimiteVenda }.thenBy { it.loteId }.thenBy { it.pratoId })
     }
 
-    // atualiza o status da promocao
-    suspend fun ativarPromocao(id: Long): Boolean = dbQuery {
-        PromocoesTable.update({ (PromocoesTable.id eq id) and (PromocoesTable.status eq "SUGESTAO") }) {
-            it[status] = "ATIVA"
-            it[dataAtivacao] = LocalDate.now().toKotlinLocalDate()
-        } > 0
-    }
 
-    suspend fun recusarPromocao(id: Long): Boolean = dbQuery {
-        PromocoesTable.update({ (PromocoesTable.id eq id) and (PromocoesTable.status eq "SUGESTAO") }) {
-            it[status] = "RECUSADA"
-        } > 0
-    }
 }
 
 private data class LotePromocao(
