@@ -2,9 +2,10 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config/environment';
 import { sessionStorage } from './sessionStorage';
 
+
 const client = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 10000, // 10 segundos de timeout para evitar travamento de UI
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -124,13 +125,33 @@ export const lotesApi = {
 };
 
 export const alertasApi = {
-  getAtivos: async () => (await client.get('/alertas/vencimento')).data,
-  salvarLote: async (alertaId) => (await client.patch(`/alertas/${alertaId}/salvar-lote`)).data,
-  marcarCiente: async (alertaId) => (await client.patch(`/alertas/${alertaId}/ciente`)).data,
+  getAtivos: async () => {
+    const response = await client.get('/alertas/vencimento');
+    return response.data;
+  },
+  salvarLote: async (alertaId) => {
+    const response = await client.patch(`/alertas/${alertaId}/salvar-lote`);
+    return response.data;
+  },
+  marcarCiente: async (alertaId) => {
+    const response = await client.patch(`/alertas/${alertaId}/ciente`);
+    return response.data;
+  },
 };
 
 export const promocoesApi = {
-  getPendentes: async () => (await client.get('/promocoes/pendentes')).data,
+  getSugestoes: async () => (await client.get('/promocoes/sugestoes')).data,
+  getCampanhas: async () => (await client.get('/promocoes')).data,
+  getResumo: async () => (await client.get('/promocoes/resumo')).data,
+  criar: async (loteId, pratoId) => (await client.post('/promocoes', { loteId, pratoId })).data,
+  ativar: async (id, dados) => (await client.patch(`/promocoes/${id}/ativar`, dados)).data,
+  recusar: async (id) => (await client.patch(`/promocoes/${id}/recusar`)).data,
+  descartar: async (loteId) => (await client.patch(`/promocoes/pendentes/${loteId}/descartar`)).data,
+  confirmar: async (id, loteEscoado) => (await client.patch(`/promocoes/${id}/confirmar`, { loteEscoado })).data,
+  getPendentes: async () => {
+    const response = await client.get('/promocoes/pendentes');
+    return response.data;
+  },
   getPrevias: async () => (await client.get('/promocoes/previas')).data,
 };
 

@@ -26,7 +26,7 @@ for (const acao of ['salvarLote', 'marcarCiente']) {
       const state = [];
       const React = {
         createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
-        Fragment: 'Fragment', useCallback: (fn) => fn,
+        Fragment: 'Fragment', useCallback: (fn) => fn, useEffect: (fn) => fn(),
         useState: (initial) => {
           const index = cursor++;
           if (!(index in state)) state[index] = initial;

@@ -107,7 +107,8 @@ export default function AlertasScreen({ onCountChange }) {
       if (acao === 'SALVAR') await alertasApi.salvarLote(alerta.id);
       else await alertasApi.marcarCiente(alerta.id);
 
-      const restantes = alertas.filter((item) => item.id !== alerta.id);
+      const restantes = alertas.filter((item) =>
+        item.loteId !== alerta.loteId || item.tipo !== alerta.tipo);
       setAlertas(restantes);
       onCountChange?.(restantes.length);
       setConfirmacao(null);
