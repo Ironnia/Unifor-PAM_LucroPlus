@@ -10,6 +10,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
+import org.mindrot.jbcrypt.BCrypt
 
 object DatabaseFactory {
     private val log = LoggerFactory.getLogger(DatabaseFactory::class.java)
@@ -65,7 +66,7 @@ object DatabaseFactory {
                         UsuariosTable.insert {
                             it[nome] = "Gerente Teste"
                             it[email] = "gerente@lucroplus.com"
-                            it[senhaHash] = "123"
+                            it[senhaHash] = BCrypt.hashpw("gerente123", BCrypt.gensalt(12))
                             it[tipo] = "GERENTE"
                             it[ativo] = true
                         }

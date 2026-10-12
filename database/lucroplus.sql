@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS tb_usuario
     CONSTRAINT uq_usuario_email UNIQUE (email)
 );
 
--- Carga inicial de usuários de teste
+-- Carga inicial de usuários de teste (senhas: admin123 e gerente123)
 INSERT INTO tb_usuario (nome, email, senha_hash, tipo, ativo)
 VALUES ('Administrador', 'admin@lucroplus.com', '$2a$12$CM.GgCRTnE/R8bdrBTUyLez0dOztEHzbsOACYBvVeQwxcG0Scvawu', 'ADMIN', TRUE),
        ('Gerente Teste', 'gerente@lucroplus.com', '$2a$12$tHAF6hTUBZTwhobYs7.RQ.SkmmR327d/0l8t1WHLp/cpecKZb9sea', 'GERENTE', TRUE)
