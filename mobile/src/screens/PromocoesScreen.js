@@ -129,7 +129,7 @@ export default function PromocoesScreen() {
 
   const lista = dados ? (aba === 'PENDENTES' ? dados.pendentes : dados.andamento) : [];
   return <View style={styles.container}>
-    <View style={styles.resumo}><Text style={styles.texto}>Resumo financeiro: aguardando a apuração vigente da E6.</Text>
+    <View style={styles.resumo}><Text style={styles.texto}>Resumo financeiro: Em progresso</Text>
       <Text style={styles.texto}>Em andamento: {dados?.resumo?.emAndamento ?? '—'}</Text></View>
     <View style={styles.abas}>{[['PENDENTES', 'Pendentes'], ['ANDAMENTO', 'Em andamento']].map(([valor, titulo]) =>
       <TouchableOpacity key={valor} accessibilityRole="tab" accessibilityState={{ selected: aba === valor }} onPress={() => setAba(valor)} style={[styles.aba, aba === valor && styles.abaAtiva]}><Text style={styles.botaoTexto}>{titulo}</Text></TouchableOpacity>)}</View>

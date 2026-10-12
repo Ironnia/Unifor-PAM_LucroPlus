@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator, FlatList, Modal, RefreshControl, StyleSheet, Text,
   TouchableOpacity, View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import PromocoesScreen from './PromocoesScreen';
 import { alertasApi, promocoesApi } from '../services/api';
 import {
   FILTROS_ALERTA, associarPrevias, contarAlertas, filtrarAlertas, formatarData,
@@ -26,13 +27,10 @@ export default function AlertasScreen({ onCountChange }) {
   const [aba, setAba] = useState('ALERTAS');
   const [filtro, setFiltro] = useState('TODOS');
   const [alertas, setAlertas] = useState([]);
-  const [pendentes, setPendentes] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
   const [erro, setErro] = useState('');
   const [aviso, setAviso] = useState('');
-  const [carregandoPendentes, setCarregandoPendentes] = useState(false);
-  const [erroPendentes, setErroPendentes] = useState('');
   const [confirmacao, setConfirmacao] = useState(null);
   const [executando, setExecutando] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -67,35 +65,13 @@ export default function AlertasScreen({ onCountChange }) {
     }
   }, [onCountChange]);
 
-  const carregarPendentes = useCallback(async () => {
-    setCarregandoPendentes(true);
-    setErroPendentes('');
-    try {
-      const dados = await promocoesApi.getPendentes();
-      if (!Array.isArray(dados)) throw new Error('A API retornou um formato inesperado para as promoções pendentes.');
-      setPendentes(dados);
-    } catch (error) {
-      setErroPendentes(mensagemErro(error, 'carregar as promoções pendentes'));
-    } finally {
-      setCarregandoPendentes(false);
-    }
-  }, []);
-
   useFocusEffect(useCallback(() => {
     carregarAlertas({ preservar: jaCarregou.current });
   }, [carregarAlertas]));
 
-  useEffect(() => {
-    if (aba === 'PROMOCOES') carregarPendentes();
-  }, [aba, carregarPendentes]);
-
   const atualizar = () => {
     setAtualizando(true);
-    if (aba === 'PROMOCOES') {
-      carregarPendentes().finally(() => setAtualizando(false));
-    } else {
-      carregarAlertas({ preservar: true });
-    }
+    carregarAlertas({ preservar: true });
   };
 
   const executarAcao = async () => {
@@ -113,10 +89,9 @@ export default function AlertasScreen({ onCountChange }) {
       onCountChange?.(restantes.length);
       setConfirmacao(null);
       setFeedback(acao === 'SALVAR'
-        ? 'Lote salvo. Consulte a aba Promoções pendentes.'
+        ? 'Lote salvo. Consulte a aba Promoções.'
         : 'Alerta marcado como ciente.');
       await carregarAlertas({ preservar: true });
-      if (acao === 'SALVAR' && aba === 'PROMOCOES') await carregarPendentes();
     } catch (error) {
       setConfirmacao(null);
       setAviso(mensagemErro(error, 'concluir a ação'));
@@ -162,15 +137,6 @@ export default function AlertasScreen({ onCountChange }) {
     );
   };
 
-  const renderPendente = ({ item }) => (
-    <View style={styles.card}>
-      <Text style={styles.ingrediente}>{item.ingredienteNome || 'Ingrediente não informado'}</Text>
-      <Text style={styles.detalhe}>Lote {item.numeroLote || `#${item.loteId}`}</Text>
-      <Text style={styles.prazo}>Prazo limite de venda: {formatarData(item.prazoLimiteVenda)}</Text>
-      <Text style={styles.pendente}>Salvo para a etapa de promoções</Text>
-    </View>
-  );
-
   return (
     <View style={styles.container}>
       <View style={styles.abas}>
@@ -178,7 +144,7 @@ export default function AlertasScreen({ onCountChange }) {
           <Text style={styles.abaTexto}>Alertas {contagens.TODOS > 0 ? `(${contagens.TODOS})` : ''}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.aba, aba === 'PROMOCOES' && styles.abaAtiva]} onPress={() => setAba('PROMOCOES')} accessibilityRole="tab" accessibilityState={{ selected: aba === 'PROMOCOES' }}>
-          <Text style={styles.abaTexto}>Promoções pendentes</Text>
+          <Text style={styles.abaTexto}>Promoções</Text>
         </TouchableOpacity>
       </View>
 
@@ -202,15 +168,7 @@ export default function AlertasScreen({ onCountChange }) {
             />
           )}
         </>
-      ) : carregandoPendentes && pendentes.length === 0 ? <View style={styles.centro}><ActivityIndicator color="#6c63ff" /><Text style={styles.detalhe}>Carregando lotes salvos...</Text></View> : (
-        <>
-          {erroPendentes ? <Text accessibilityRole="alert" style={styles.aviso}>{erroPendentes} <Text onPress={carregarPendentes} style={styles.link}>Tentar novamente</Text></Text> : null}
-          <FlatList data={pendentes} keyExtractor={(item) => String(item.alertaId)} renderItem={renderPendente} contentContainerStyle={styles.lista}
-            refreshControl={<RefreshControl refreshing={atualizando} onRefresh={atualizar} tintColor="#6c63ff" />}
-            ListEmptyComponent={!erroPendentes && !carregandoPendentes ? <View style={styles.centro}><Text style={styles.tituloVazio}>Nenhum lote salvo</Text><Text style={styles.detalhe}>Use Salvar Lote em um alerta para incluí-lo aqui.</Text></View> : null}
-          />
-        </>
-      )}
+      ) : <PromocoesScreen />}
 
       <Modal visible={Boolean(confirmacao)} transparent animationType="fade" onRequestClose={() => !executando && setConfirmacao(null)}>
         <View style={styles.sombra}><View style={styles.modal}>

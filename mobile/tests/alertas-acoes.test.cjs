@@ -19,6 +19,46 @@ function nodes(tree) {
   return [tree, ...nodes(tree.props?.children)];
 }
 
+test('subaba de Promocoes abre a tela de campanhas e permite voltar aos Alertas', () => {
+  let cursor = 0;
+  const state = [];
+  const React = {
+    createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
+    Fragment: 'Fragment', useCallback: (fn) => fn, useEffect: (fn) => fn(),
+    useState: (initial) => {
+      const index = cursor++;
+      if (!(index in state)) state[index] = initial;
+      return [state[index], (value) => { state[index] = value; }];
+    },
+    useRef: (initial) => {
+      const index = cursor++;
+      if (!(index in state)) state[index] = { current: initial };
+      return state[index];
+    },
+  };
+  const native = Object.fromEntries(['ActivityIndicator', 'FlatList', 'Modal', 'RefreshControl', 'Text', 'TouchableOpacity', 'View'].map((key) => [key, key]));
+  native.StyleSheet = { create: (styles) => styles };
+  function Campanhas() {}
+  const Screen = load('src/screens/AlertasScreen.js', {
+    react: React, 'react-native': native,
+    '@react-navigation/native': { useFocusEffect: () => {} },
+    '@expo/vector-icons': { Ionicons: 'Ionicons' },
+    './PromocoesScreen': Campanhas,
+    '../services/api': { promocoesApi: { getPendentes: async () => [] } },
+    './alertasViewModel': load('src/screens/alertasViewModel.js', {}),
+  }).default;
+  const render = () => { cursor = 0; return Screen({}); };
+  const tab = (tree, label) => nodes(tree).find((item) => item.props.accessibilityRole === 'tab'
+    && nodes(item).some((child) => child.type === 'Text' && child.props.children.some((text) => typeof text === 'string' && text.startsWith(label))));
+  let tree = render();
+  tab(tree, 'Promoções').props.onPress();
+  tree = render();
+  assert.ok(nodes(tree).some((item) => item.type === Campanhas), 'a tela funcional de campanhas deve estar acessível');
+  tab(tree, 'Alertas').props.onPress();
+  tree = render();
+  assert.ok(!nodes(tree).some((item) => item.type === Campanhas));
+});
+
 for (const acao of ['salvarLote', 'marcarCiente']) {
   for (const falhaAcao of [false, true]) {
     test(`${acao}: ${falhaAcao ? 'falha preserva cards' : 'sucesso remove lote mesmo se recarga falhar'}`, async () => {
