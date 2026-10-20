@@ -1,5 +1,9 @@
 package br.com.lucroplus.services
 
+import br.com.lucroplus.database.RestaurantesTable
+import br.com.lucroplus.database.UsuariosTable
+import br.com.lucroplus.routes.prepararContaTeste
+
 import br.com.lucroplus.database.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.toKotlinLocalDate
@@ -17,12 +21,15 @@ class PrazoLoteIntegracaoTest {
         val hoje = LocalDate.now()
         val dias = listOf(-1, 0, 7, 8, 14, 15)
         transaction(banco) {
-            SchemaUtils.create(IngredientesTable, LotesTable, AlertasTable)
+            SchemaUtils.create(UsuariosTable, RestaurantesTable, IngredientesTable, LotesTable, AlertasTable)
+            prepararContaTeste()
             IngredientesTable.insert {
+                it[IngredientesTable.restauranteId] = 1
                 it[id] = 1L; it[nome] = "Tomate"; it[unidade] = "g"
             }
             dias.forEachIndexed { i, prazo ->
                 LotesTable.insert {
+                    it[LotesTable.restauranteId] = 1
                     it[id] = i + 1L; it[ingredienteId] = 1L; it[quantidadeG] = 1000
                     it[custoUnitario] = BigDecimal("0.0065")
                     it[dataValidade] = hoje.plusDays(prazo + 1L).toKotlinLocalDate()
@@ -30,17 +37,18 @@ class PrazoLoteIntegracaoTest {
                 }
             }
             LotesTable.insert {
+                it[LotesTable.restauranteId] = 1
                 it[id] = 7L; it[ingredienteId] = 1L; it[quantidadeG] = 0
                 it[custoUnitario] = BigDecimal("0.0065")
                 it[dataValidade] = hoje.plusDays(2).toKotlinLocalDate()
                 it[dataEntrada] = hoje.toKotlinLocalDate()
             }
         }
-        val lotes = LoteService.listarLotes()
+        val lotes = LoteService(1).listarLotes()
         assertEquals(dias, lotes.map { it.diasParaPrazoLimite })
         assertEquals(listOf("CRITICO", "CRITICO", "CRITICO", "ATENCAO", "ATENCAO", "SAUDAVEL"), lotes.map { it.criticidade })
         lotes.forEach { assertEquals(LocalDate.parse(it.dataValidade).minusDays(1).toString(), it.prazoLimiteVenda) }
-        val alertas = AlertaService.obterAlertasVencimento()
+        val alertas = AlertaService(1).obterAlertasVencimento()
         assertEquals(listOf(0, 7, 8, 14), alertas.map { it.diasParaPrazoLimite })
         alertas.forEach { alerta ->
             val lote = lotes.single { it.id == alerta.loteId }
@@ -49,8 +57,7 @@ class PrazoLoteIntegracaoTest {
             assertEquals(lote.criticidade, alerta.criticidade)
             assertTrue(alerta.mensagem.contains("prazo limite de venda"))
         }
-        assertEquals(alertas.map { it.id }, AlertaService.obterAlertasVencimento().map { it.id })
+        assertEquals(alertas.map { it.id }, AlertaService(1).obterAlertasVencimento().map { it.id })
         transaction(banco) { assertEquals(4L, AlertasTable.selectAll().count()) }
     }
 }
-

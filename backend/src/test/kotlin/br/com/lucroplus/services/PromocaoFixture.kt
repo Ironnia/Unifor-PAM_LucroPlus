@@ -1,5 +1,9 @@
 package br.com.lucroplus.services
 
+import br.com.lucroplus.database.RestaurantesTable
+import br.com.lucroplus.database.UsuariosTable
+import br.com.lucroplus.routes.prepararContaTeste
+
 import br.com.lucroplus.database.*
 import kotlinx.datetime.toKotlinLocalDate
 import org.jetbrains.exposed.sql.*
@@ -13,7 +17,7 @@ import java.sql.DriverManager
 // fixture com banco em memoria para testes
 class PromocaoFixture {
     var hoje: LocalDate = LocalDate.now()
-    val servico = CicloPromocaoService { hoje }
+    val servico = CicloPromocaoService(1) { hoje }
     val banco = criarBanco()
 
     private fun criarBanco(): Database {
@@ -32,13 +36,16 @@ class PromocaoFixture {
     init {
         TransactionManager.defaultDatabase = banco
         transaction(banco) {
-            SchemaUtils.create(IngredientesTable, ProdutosTable, LotesTable, FichasTecnicasTable,
+            SchemaUtils.create(UsuariosTable, RestaurantesTable, IngredientesTable, ProdutosTable, LotesTable, FichasTecnicasTable,
                 AlertasTable, AcoesAlertaTable, PromocoesTable, VendasTable, ItensVendaTable)
+            prepararContaTeste()
             IngredientesTable.insert {
+                it[IngredientesTable.restauranteId] = 1
                 it[id] = 1; it[nome] = "Tomate"; it[unidade] = "g"
             }
             for (prato in 1L..3L) {
                 ProdutosTable.insert {
+                    it[ProdutosTable.restauranteId] = 1
                     it[id] = prato; it[nome] = "Prato $prato"; it[preco] = BigDecimal("20.00")
                     it[categoria] = "Teste"; it[ativo] = true
                 }
@@ -53,6 +60,7 @@ class PromocaoFixture {
 
     fun lote(idLote: Long, dias: Long, salvo: Boolean = true, quantidade: Int = 1234) = transaction(banco) {
         LotesTable.insert {
+            it[LotesTable.restauranteId] = 1
             it[id] = idLote; it[ingredienteId] = 1L; it[quantidadeG] = quantidade
             it[custoUnitario] = BigDecimal("0.0123"); it[dataEntrada] = hoje.toKotlinLocalDate()
             it[dataValidade] = hoje.plusDays(dias).toKotlinLocalDate()

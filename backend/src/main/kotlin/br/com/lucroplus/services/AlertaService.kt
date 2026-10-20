@@ -27,7 +27,7 @@ interface AlertaOperacoes {
     suspend fun listarLotesPendentes(): List<LotePendentePromocaoDto>
 }
 
-object AlertaService : AlertaOperacoes {
+class AlertaService(private val restauranteId: Long) : AlertaOperacoes {
 
     override suspend fun obterAlertasVencimento(): List<AlertaDto> = dbQuery {
         val hojeJava = LocalDate.now()
@@ -41,6 +41,7 @@ object AlertaService : AlertaOperacoes {
         val lotesEmRisco = (LotesTable innerJoin IngredientesTable)
             .selectAll()
             .where {
+                (LotesTable.restauranteId eq restauranteId) and (IngredientesTable.restauranteId eq restauranteId) and
                 (LotesTable.dataValidade greaterEq validadeMinimaKmp) and
                     (LotesTable.dataValidade lessEq dataLimiteKmp) and
                     (LotesTable.quantidadeG greater 0)
@@ -82,6 +83,7 @@ object AlertaService : AlertaOperacoes {
         (AlertasTable innerJoin LotesTable innerJoin IngredientesTable)
             .selectAll()
             .where {
+                (LotesTable.restauranteId eq restauranteId) and (IngredientesTable.restauranteId eq restauranteId) and
                 (AlertasTable.visualizado eq false) and
                     (AlertasTable.tipo eq "VENCIMENTO") and
                     (LotesTable.dataValidade greaterEq validadeMinimaKmp) and
@@ -140,12 +142,12 @@ object AlertaService : AlertaOperacoes {
 
     // trava o lote para evitar acoes concorrentes duplicadas
     override suspend fun executarAcao(alertaId: Long, acao: AcaoAlerta): ResultadoAcaoAlerta = dbQuery {
-        val alertaInicial = AlertasTable.selectAll()
-            .where { (AlertasTable.id eq alertaId) and (AlertasTable.tipo eq "VENCIMENTO") }
+        val alertaInicial = (AlertasTable innerJoin LotesTable).selectAll()
+            .where { (LotesTable.restauranteId eq restauranteId) and (AlertasTable.id eq alertaId) and (AlertasTable.tipo eq "VENCIMENTO") }
             .singleOrNull() ?: return@dbQuery ResultadoAcaoAlerta.NAO_ENCONTRADO
         val loteId = alertaInicial[AlertasTable.loteId]
 
-        val lote = LotesTable.selectAll().where { LotesTable.id eq loteId }
+        val lote = LotesTable.selectAll().where { (LotesTable.restauranteId eq restauranteId) and (LotesTable.id eq loteId) }
             .forUpdate().singleOrNull() ?: return@dbQuery ResultadoAcaoAlerta.NAO_ENCONTRADO
         val alerta = AlertasTable.selectAll().where { AlertasTable.id eq alertaId }
             .forUpdate().singleOrNull() ?: return@dbQuery ResultadoAcaoAlerta.NAO_ENCONTRADO
@@ -180,11 +182,12 @@ object AlertaService : AlertaOperacoes {
 
     override suspend fun listarLotesPendentes(): List<LotePendentePromocaoDto> = dbQuery {
         val encaminhados = PromocoesTable.selectAll().where {
-            PromocoesTable.status inList listOf("EM_ANDAMENTO", "CONCLUIDA_SUCESSO", "EXPIRADA_COM_PERDA", "RECUSADA")
+            (PromocoesTable.restauranteId eq restauranteId) and
+            (PromocoesTable.status inList listOf("EM_ANDAMENTO", "CONCLUIDA_SUCESSO", "EXPIRADA_COM_PERDA", "RECUSADA"))
         }.mapNotNull { it[PromocoesTable.loteId] }.toSet()
         (AcoesAlertaTable innerJoin LotesTable innerJoin IngredientesTable)
             .selectAll()
-            .where { AcoesAlertaTable.acao eq AcaoAlerta.SALVAR_LOTE.name }
+            .where { (LotesTable.restauranteId eq restauranteId) and (IngredientesTable.restauranteId eq restauranteId) and (AcoesAlertaTable.acao eq AcaoAlerta.SALVAR_LOTE.name) }
             .orderBy(LotesTable.dataValidade, SortOrder.ASC)
             .filter { it[LotesTable.id] !in encaminhados }
             .map { row ->

@@ -39,11 +39,11 @@ class ReconciliacaoCicloTest {
     fun `descartar lote sem ficha nao cria campanha e nao reabre alerta`() = runBlocking {
         val f = PromocaoFixture()
         transaction(f.banco) { FichasTecnicasTable.deleteAll() }
-        assertTrue(MotorPromocaoService.listarSugestoes(f.hoje).isEmpty())
+        assertTrue(MotorPromocaoService(1).listarSugestoes(f.hoje).isEmpty())
         repeat(2) { f.servico.descartarPendente(1) }
         assertTrue(f.servico.listar().isEmpty())
-        assertFalse(AlertaService.listarLotesPendentes().any { it.loteId == 1L })
-        assertEquals(ResultadoAcaoAlerta.CONFLITO, AlertaService.executarAcao(1, AcaoAlerta.SALVAR_LOTE))
+        assertFalse(AlertaService(1).listarLotesPendentes().any { it.loteId == 1L })
+        assertEquals(ResultadoAcaoAlerta.CONFLITO, AlertaService(1).executarAcao(1, AcaoAlerta.SALVAR_LOTE))
         transaction(f.banco) {
             assertTrue(AlertasTable.selectAll().where { AlertasTable.id eq 1L }.single()[AlertasTable.visualizado])
             assertEquals(1234, LotesTable.selectAll().where { LotesTable.id eq 1L }.single()[LotesTable.quantidadeG])
@@ -60,18 +60,18 @@ class ReconciliacaoCicloTest {
         assertEquals(listOf(200, 409), resultados.sorted())
         val campanhas = f.servico.listar()
         if (campanhas.isNotEmpty()) assertEquals(StatusPromocao.SUGERIDA, campanhas.single().status)
-        else assertFalse(AlertaService.listarLotesPendentes().any { it.loteId == 1L })
+        else assertFalse(AlertaService(1).listarLotesPendentes().any { it.loteId == 1L })
     }
 
     @Test
     fun `rascunho sobrevive recarga mas sai dos candidatos e ativacao sai dos pendentes`() = runBlocking {
         val f = PromocaoFixture()
         val p = f.servico.criar(CriarPromocaoRequest(1, 1))
-        assertTrue(AlertaService.listarLotesPendentes().any { it.loteId == 1L })
+        assertTrue(AlertaService(1).listarLotesPendentes().any { it.loteId == 1L })
         assertEquals(p, f.servico.listar().single())
-        assertFalse(MotorPromocaoService.listarSugestoes(f.hoje).any { it.loteId == 1L })
+        assertFalse(MotorPromocaoService(1).listarSugestoes(f.hoje).any { it.loteId == 1L })
         f.servico.ativar(p.id, AtivarPromocaoRequest(20, f.hoje.toString(), f.hoje.toString()))
-        assertFalse(AlertaService.listarLotesPendentes().any { it.loteId == 1L })
+        assertFalse(AlertaService(1).listarLotesPendentes().any { it.loteId == 1L })
         assertEquals(409, assertFailsWith<ErroPromocao> { f.servico.descartarPendente(1) }.codigo)
         assertEquals(409, assertFailsWith<ErroPromocao> { f.servico.recusar(p.id) }.codigo)
     }

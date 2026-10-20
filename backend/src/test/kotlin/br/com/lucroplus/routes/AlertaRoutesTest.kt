@@ -29,7 +29,7 @@ class AlertaRoutesTest {
     private val issuer = "lucroplus-test"
     private val algorithm = Algorithm.HMAC256("somente-testes-alertas-1234567890")
     private val token = JWT.create().withAudience(audience).withIssuer(issuer)
-        .sign(algorithm)
+        .withClaim("id", 1L).sign(algorithm)
 
     private class Fake : AlertaOperacoes {
         var resultado = ResultadoAcaoAlerta.CONCLUIDA
@@ -43,6 +43,7 @@ class AlertaRoutesTest {
     }
 
     private fun Application.modulo(fake: Fake) {
+        bancoContaTeste()
         install(Authentication) {
             jwt("auth-jwt") {
                 realm = "LucroPlus Test"

@@ -1,5 +1,9 @@
 package br.com.lucroplus.routes
 
+import br.com.lucroplus.database.RestaurantesTable
+import br.com.lucroplus.database.UsuariosTable
+import br.com.lucroplus.routes.prepararContaTeste
+
 import br.com.lucroplus.database.*
 import br.com.lucroplus.models.AlertaDto
 import br.com.lucroplus.services.AlertaService
@@ -34,7 +38,7 @@ class AlertaConcorrenciaTest {
     private val url = "jdbc:mysql://127.0.0.1:3306/?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
     private lateinit var banco: Database
     private val algorithm = Algorithm.HMAC256("chave-ficticia-exclusiva-deste-teste")
-    private val token = JWT.create().withAudience("teste").withIssuer("teste").sign(algorithm)
+    private val token = JWT.create().withAudience("teste").withIssuer("teste").withClaim("id", 1L).sign(algorithm)
 
     @BeforeTest
     fun preparar() {
@@ -47,9 +51,12 @@ class AlertaConcorrenciaTest {
         else Database.connect("jdbc:h2:mem:$nome;MODE=MySQL;DB_CLOSE_DELAY=-1", "org.h2.Driver", databaseConfig = config)
         TransactionManager.defaultDatabase = banco
         transaction(banco) {
-            SchemaUtils.create(IngredientesTable, ProdutosTable, LotesTable, AlertasTable, AcoesAlertaTable, PromocoesTable)
-            IngredientesTable.insert { it[id] = 1; it[nome] = "Ingrediente fictício"; it[unidade] = "g" }
+            SchemaUtils.create(UsuariosTable, RestaurantesTable, IngredientesTable, ProdutosTable, LotesTable, AlertasTable, AcoesAlertaTable, PromocoesTable)
+            prepararContaTeste()
+            IngredientesTable.insert {
+                it[IngredientesTable.restauranteId] = 1; it[id] = 1; it[nome] = "Ingrediente fictício"; it[unidade] = "g" }
             for (idLote in 1L..3L) LotesTable.insert {
+                it[LotesTable.restauranteId] = 1
                 it[id] = idLote; it[ingredienteId] = 1; it[quantidadeG] = 1000
                 it[custoUnitario] = java.math.BigDecimal("0.01")
                 it[dataEntrada] = LocalDate.now().toKotlinLocalDate()
@@ -73,7 +80,7 @@ class AlertaConcorrenciaTest {
                 validate { JWTPrincipal(it.payload) }
             }
         }
-        routing { alertaRoutes(AlertaService); promocaoRoutes(AlertaService) }
+        routing { alertaRoutes(AlertaService(1)); promocaoRoutes(AlertaService(1)) }
     }
 
     @Test
@@ -102,7 +109,7 @@ class AlertaConcorrenciaTest {
     fun `acoes HTTP concorrentes sao idempotentes e nao reabrem alerta`() = testApplication {
         application { modulo() }
         startApplication()
-        val lista = AlertaService.obterAlertasVencimento()
+        val lista = AlertaService(1).obterAlertasVencimento()
         for ((alerta, acao) in lista.take(2).zip(listOf("salvar-lote", "ciente"))) {
             val respostas = coroutineScope {
                 (1..8).map { async(Dispatchers.Default) {
@@ -113,14 +120,14 @@ class AlertaConcorrenciaTest {
             val oposta = if (acao == "ciente") "salvar-lote" else "ciente"
             assertEquals(HttpStatusCode.Conflict, client.patch("/alertas/${alerta.id}/$oposta") { bearerAuth(token) }.status)
         }
-        assertEquals(1, AlertaService.obterAlertasVencimento().size)
-        assertEquals(1, AlertaService.listarLotesPendentes().size)
+        assertEquals(1, AlertaService(1).obterAlertasVencimento().size)
+        assertEquals(1, AlertaService(1).listarLotesPendentes().size)
         assertEquals(2L, transaction(banco) { AcoesAlertaTable.selectAll().count() })
     }
 
     @Test
     fun `banco rejeita mesmo lote e tipo mas aceita outro tipo`() = runBlocking {
-        val alerta = AlertaService.obterAlertasVencimento().first()
+        val alerta = AlertaService(1).obterAlertasVencimento().first()
         fun inserir(tipoAlerta: String) = transaction(banco) {
             maxAttempts = 1
             AlertasTable.insert {
@@ -130,6 +137,6 @@ class AlertaConcorrenciaTest {
         }
         assertFailsWith<org.jetbrains.exposed.exceptions.ExposedSQLException> { inserir("VENCIMENTO") }
         inserir("ESTOQUE_MINIMO")
-        assertEquals(3, AlertaService.obterAlertasVencimento().size)
+        assertEquals(3, AlertaService(1).obterAlertasVencimento().size)
     }
 }

@@ -12,7 +12,7 @@ import org.jetbrains.exposed.sql.update
 import java.math.BigDecimal
 import java.time.LocalDate
 
-object ImportacaoService {
+class ImportacaoService(private val restauranteId: Long) {
 
     suspend fun importarProdutos(csvContent: String): ImportacaoResponse = dbQuery {
         val linhas = parseCsv(csvContent)
@@ -49,7 +49,7 @@ object ImportacaoService {
 
             val existente = ProdutosTable
                 .selectAll()
-                .where { ProdutosTable.nome eq nome }
+                .where { (ProdutosTable.restauranteId eq restauranteId) and (ProdutosTable.nome eq nome) }
                 .singleOrNull()
 
             if (existente != null) {
@@ -61,6 +61,7 @@ object ImportacaoService {
                 }
             } else {
                 ProdutosTable.insert {
+                    it[ProdutosTable.restauranteId] = this@ImportacaoService.restauranteId
                     it[ProdutosTable.nome] = nome
                     it[ProdutosTable.descricao] = descricao
                     it[ProdutosTable.preco] = preco
@@ -133,13 +134,14 @@ object ImportacaoService {
 
             var ingrediente = IngredientesTable
                 .selectAll()
-                .where { IngredientesTable.nome eq nome }
+                .where { (IngredientesTable.restauranteId eq restauranteId) and (IngredientesTable.nome eq nome) }
                 .singleOrNull()
 
             val ingredienteId = if (ingrediente != null) {
                 ingrediente[IngredientesTable.id]
             } else {
                 IngredientesTable.insert {
+                    it[IngredientesTable.restauranteId] = this@ImportacaoService.restauranteId
                     it[IngredientesTable.nome] = nome
                     it[IngredientesTable.unidade] = unidade
                     it[IngredientesTable.estoqueMinimo] = BigDecimal.ZERO
@@ -148,6 +150,7 @@ object ImportacaoService {
 
             val hojeKmp = LocalDate.now().toKotlinLocalDate()
             LotesTable.insert {
+                    it[LotesTable.restauranteId] = this@ImportacaoService.restauranteId
                 it[LotesTable.ingredienteId] = ingredienteId
                 it[LotesTable.quantidadeG] = quantidade.toInt()
                 it[LotesTable.custoUnitario] = custo
@@ -200,7 +203,7 @@ object ImportacaoService {
 
             val produto = ProdutosTable
                 .selectAll()
-                .where { ProdutosTable.nome eq nomeProduto }
+                .where { (ProdutosTable.restauranteId eq restauranteId) and (ProdutosTable.nome eq nomeProduto) }
                 .singleOrNull()
 
             if (produto == null) {
@@ -210,7 +213,7 @@ object ImportacaoService {
 
             val ingrediente = IngredientesTable
                 .selectAll()
-                .where { IngredientesTable.nome eq nomeIngrediente }
+                .where { (IngredientesTable.restauranteId eq restauranteId) and (IngredientesTable.nome eq nomeIngrediente) }
                 .singleOrNull()
 
             if (ingrediente == null) {
@@ -276,7 +279,7 @@ object ImportacaoService {
             val qtdStr = colunas[2].trim()
 
             val quantidade = qtdStr.toIntOrNull()
-            val dataVenda = try { LocalDate.parse(dataStr).toKotlinLocalDate() } catch (e: Exception) { null }
+            val dataVenda = try { LocalDate.parse(dataStr.substringBefore('T')).toKotlinLocalDate() } catch (e: Exception) { null }
 
             if (quantidade == null || quantidade <= 0) {
                 erros.add(ErroImportacaoDto(numLinha, "quantidade", qtdStr, "Quantidade de itens vendidos inválida"))
@@ -289,7 +292,7 @@ object ImportacaoService {
 
             val produto = ProdutosTable
                 .selectAll()
-                .where { ProdutosTable.nome eq nomeProduto }
+                .where { (ProdutosTable.restauranteId eq restauranteId) and (ProdutosTable.nome eq nomeProduto) }
                 .singleOrNull()
 
             if (produto == null) {
@@ -302,6 +305,7 @@ object ImportacaoService {
             val valorTotal = precoUnitario.multiply(BigDecimal(quantidade))
 
             val vendaId = VendasTable.insert {
+                    it[VendasTable.restauranteId] = this@ImportacaoService.restauranteId
                 it[VendasTable.usuarioId] = null
                 it[VendasTable.dataVenda] = dataVenda
                 it[VendasTable.valorTotal] = valorTotal
@@ -330,15 +334,18 @@ object ImportacaoService {
     }
 
     suspend fun sincronizarPdv(): ImportacaoResponse {
-        val config = ConfiguracaoService.obterPdvConfig()
-        val teste = ConfiguracaoService.testarConexao(config)
+        val config = ConfiguracaoService(restauranteId).obterPdvConfig(incluirSenha = true)
+        if (config.url?.contains("simulado", ignoreCase = true) == true || config.username.equals("mock", ignoreCase = true)) {
+            return ImportacaoResponse(false, "A sincronização exige uma conexão MySQL real; use Testar conexão para a simulação.", 0, 0, 1)
+        }
+        val teste = ConfiguracaoService(restauranteId).testarConexao(config)
 
         return if (teste.sucesso) {
             ImportacaoResponse(
                 sucesso = true,
-                mensagem = "Sincronização com o PDV executada com sucesso!",
-                totalLinhas = 10,
-                linhasSucesso = 10,
+                mensagem = "Conexão com o PDV validada; nenhum registro foi importado.",
+                totalLinhas = 0,
+                linhasSucesso = 0,
                 linhasErro = 0
             )
         } else {
@@ -348,7 +355,7 @@ object ImportacaoService {
                 totalLinhas = 0,
                 linhasSucesso = 0,
                 linhasErro = 1,
-                erros = listOf(ErroImportacaoDto(1, "conexao", config.url ?: "", teste.mensagem))
+                erros = listOf(ErroImportacaoDto(1, "conexao", "", teste.mensagem))
             )
         }
     }

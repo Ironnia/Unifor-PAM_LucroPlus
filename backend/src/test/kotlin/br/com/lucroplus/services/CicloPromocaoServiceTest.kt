@@ -63,13 +63,13 @@ class CicloPromocaoServiceTest {
     fun `recusa encerra pendencia sem recomendar outro prato`() = runBlocking {
         val f = PromocaoFixture()
         val p = f.servico.criar(CriarPromocaoRequest(1, 1))
-        assertFalse(MotorPromocaoService.listarSugestoes(f.hoje).any { it.loteId == 1L })
+        assertFalse(MotorPromocaoService(1).listarSugestoes(f.hoje).any { it.loteId == 1L })
         val recusada = f.servico.recusar(p.id)
         assertEquals(recusada, f.servico.recusar(p.id))
-        assertFalse(MotorPromocaoService.listarSugestoes(f.hoje).any { it.loteId == 1L })
+        assertFalse(MotorPromocaoService(1).listarSugestoes(f.hoje).any { it.loteId == 1L })
         assertEquals(409, assertFailsWith<ErroPromocao> { f.servico.ativar(p.id, f.ativacao()) }.codigo)
         assertEquals(409, assertFailsWith<ErroPromocao> { f.servico.criar(CriarPromocaoRequest(1, 2)) }.codigo)
-        assertFalse(AlertaService.listarLotesPendentes().any { it.loteId == 1L })
+        assertFalse(AlertaService(1).listarLotesPendentes().any { it.loteId == 1L })
 
     }
 
@@ -132,6 +132,7 @@ class CicloPromocaoServiceTest {
     fun `legado fica preservado fora do ciclo sem lote inventado`() = runBlocking {
         val f = PromocaoFixture()
         val id = transaction(f.banco) { PromocoesTable.insert {
+            it[PromocoesTable.restauranteId] = 1
             it[produtoId] = 1L; it[descontoPct] = 10; it[motivo] = "Legado"
             it[status] = "ATIVA"; it[dataSugestao] = f.hoje.toKotlinLocalDate()
         }[PromocoesTable.id] }

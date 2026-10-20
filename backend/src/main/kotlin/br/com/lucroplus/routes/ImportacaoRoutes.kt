@@ -1,64 +1,73 @@
-package br.com.lucroplus.routes
+    package br.com.lucroplus.routes
 
-import br.com.lucroplus.models.ErrorResponse
-import br.com.lucroplus.models.ImportacaoResponse
-import br.com.lucroplus.services.ImportacaoService
-import io.ktor.http.*
-import io.ktor.http.content.*
-import io.ktor.server.application.*
-import io.ktor.server.request.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
+    import br.com.lucroplus.security.restauranteAutenticado
+    import io.ktor.server.auth.*
+    import br.com.lucroplus.models.ErrorResponse
+    import br.com.lucroplus.models.ImportacaoResponse
+    import br.com.lucroplus.services.ImportacaoService
+    import io.ktor.http.*
+    import io.ktor.http.content.*
+    import io.ktor.server.application.*
+    import io.ktor.server.request.*
+    import io.ktor.server.response.*
+    import io.ktor.server.routing.*
 
-fun Route.importacaoRoutes() {
-    route("/importacao") {
-        post("/produtos") {
-            val csvText = call.extrairConteudoCsv()
-            if (csvText == null) {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Nenhum arquivo CSV foi enviado"))
-                return@post
+    fun Route.importacaoRoutes() {
+        authenticate("auth-jwt") {
+        route("/importacao") {
+            post("/produtos") {
+                val restauranteId = call.restauranteAutenticado() ?: return@post
+                val csvText = call.extrairConteudoCsv()
+                if (csvText == null) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("Nenhum arquivo CSV foi enviado"))
+                    return@post
+                }
+
+                val resultado = ImportacaoService(restauranteId).importarProdutos(csvText)
+                call.respond(HttpStatusCode.OK, resultado)
             }
 
-            val resultado = ImportacaoService.importarProdutos(csvText)
-            call.respond(HttpStatusCode.OK, resultado)
-        }
+            post("/ingredientes") {
+                val restauranteId = call.restauranteAutenticado() ?: return@post
+                val csvText = call.extrairConteudoCsv()
+                if (csvText == null) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("Nenhum arquivo CSV foi enviado"))
+                    return@post
+                }
 
-        post("/ingredientes") {
-            val csvText = call.extrairConteudoCsv()
-            if (csvText == null) {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Nenhum arquivo CSV foi enviado"))
-                return@post
+                val resultado = ImportacaoService(restauranteId).importarIngredientes(csvText)
+                call.respond(HttpStatusCode.OK, resultado)
             }
 
-            val resultado = ImportacaoService.importarIngredientes(csvText)
-            call.respond(HttpStatusCode.OK, resultado)
-        }
+            post("/ficha-tecnica") {
+                val restauranteId = call.restauranteAutenticado() ?: return@post
+                val csvText = call.extrairConteudoCsv()
+                if (csvText == null) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("Nenhum arquivo CSV foi enviado"))
+                    return@post
+                }
 
-        post("/ficha-tecnica") {
-            val csvText = call.extrairConteudoCsv()
-            if (csvText == null) {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Nenhum arquivo CSV foi enviado"))
-                return@post
+                val resultado = ImportacaoService(restauranteId).importarFichaTecnica(csvText)
+                call.respond(HttpStatusCode.OK, resultado)
             }
 
-            val resultado = ImportacaoService.importarFichaTecnica(csvText)
-            call.respond(HttpStatusCode.OK, resultado)
-        }
+            post("/vendas") {
+                val restauranteId = call.restauranteAutenticado() ?: return@post
+                val csvText = call.extrairConteudoCsv()
+                if (csvText == null) {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("Nenhum arquivo CSV foi enviado"))
+                    return@post
+                }
 
-        post("/vendas") {
-            val csvText = call.extrairConteudoCsv()
-            if (csvText == null) {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse("Nenhum arquivo CSV foi enviado"))
-                return@post
+                val resultado = ImportacaoService(restauranteId).importarVendas(csvText)
+                call.respond(HttpStatusCode.OK, resultado)
             }
 
-            val resultado = ImportacaoService.importarVendas(csvText)
-            call.respond(HttpStatusCode.OK, resultado)
-        }
-
-        post("/pdv") {
-            val resultado = ImportacaoService.sincronizarPdv()
-            call.respond(HttpStatusCode.OK, resultado)
+            post("/pdv") {
+                val restauranteId = call.restauranteAutenticado() ?: return@post
+                val resultado = ImportacaoService(restauranteId).sincronizarPdv()
+                call.respond(HttpStatusCode.OK, resultado)
+            }
         }
     }
 }

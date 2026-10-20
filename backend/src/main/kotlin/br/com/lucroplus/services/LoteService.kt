@@ -5,17 +5,18 @@ import br.com.lucroplus.database.IngredientesTable
 import br.com.lucroplus.database.LotesTable
 import br.com.lucroplus.models.LoteItemDto
 import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import java.time.LocalDate
 import java.util.Locale
 
-object LoteService {
+class LoteService(private val restauranteId: Long) {
     suspend fun listarLotes(): List<LoteItemDto> = dbQuery {
         val hojeJava = LocalDate.now()
 
         (LotesTable innerJoin IngredientesTable)
             .selectAll()
-            .where { LotesTable.quantidadeG greater 0 }
+            .where { (LotesTable.restauranteId eq restauranteId) and (IngredientesTable.restauranteId eq restauranteId) and (LotesTable.quantidadeG greater 0) }
             .orderBy(LotesTable.dataValidade, SortOrder.ASC)
             .map { row ->
                 val id = row[LotesTable.id]

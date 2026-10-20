@@ -39,6 +39,8 @@ jobs:
         run: chmod +x mvnw
 
       - name: Compilar e executar testes
+        env:
+          JWT_SECRET: chave-ficticia-exclusiva-dos-testes-ci-123456789
         run: ./mvnw --batch-mode --no-transfer-progress test
 
   mobile:

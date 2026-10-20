@@ -2,11 +2,13 @@ package br.com.lucroplus.routes
 
 import br.com.lucroplus.database.DatabaseFactory.dbQuery
 import br.com.lucroplus.database.UsuariosTable
+import br.com.lucroplus.database.RestaurantesTable
 import br.com.lucroplus.models.ErrorResponse
 import br.com.lucroplus.models.LoginRequest
 import br.com.lucroplus.models.LoginResponse
 import br.com.lucroplus.models.RegisterRequest
 import br.com.lucroplus.security.JwtConfig
+import br.com.lucroplus.security.contaAutenticada
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -23,6 +25,7 @@ fun Route.authRoutes() {
     route("/auth") {
 
         post("/login") {
+
             val request = try {
                 call.receive<LoginRequest>()
             } catch (e: Exception) {
@@ -69,8 +72,15 @@ fun Route.authRoutes() {
             val nome = usuario[UsuariosTable.nome]
             val email = usuario[UsuariosTable.email]
             val tipo = usuario[UsuariosTable.tipo]
+            val restauranteId = usuario[UsuariosTable.restauranteId]
+            val restauranteNome = restauranteId?.let { lojaId ->
+                dbQuery {
+                    RestaurantesTable.selectAll().where { RestaurantesTable.id eq lojaId }
+                        .singleOrNull()?.get(RestaurantesTable.nome)
+                }
+            }
 
-            val token = JwtConfig.generateToken(id, email, tipo, nome)
+            val token = JwtConfig.generateToken(id, email, tipo, nome, restauranteId)
 
             call.respond(
                 HttpStatusCode.OK,
@@ -80,7 +90,9 @@ fun Route.authRoutes() {
                     id = id,
                     nome = nome,
                     email = email,
-                    tipo = tipo
+                    tipo = tipo,
+                    restauranteId = restauranteId,
+                    restauranteNome = restauranteNome
                 )
             )
         }
@@ -128,12 +140,12 @@ fun Route.authRoutes() {
                     it[nome] = request.nome.trim()
                     it[email] = request.email.trim().lowercase()
                     it[this.senhaHash] = senhaHash
-                    it[tipo] = request.tipo.trim().uppercase()
+                    it[tipo] = "GERENTE"
                     it[ativo] = true
                 } get UsuariosTable.id
             }
 
-            val token = JwtConfig.generateToken(novoId, request.email.trim().lowercase(), request.tipo.trim().uppercase(), request.nome.trim())
+            val token = JwtConfig.generateToken(novoId, request.email.trim().lowercase(), "GERENTE", request.nome.trim())
 
             call.respond(
                 HttpStatusCode.Created,
@@ -143,35 +155,37 @@ fun Route.authRoutes() {
                     id = novoId,
                     nome = request.nome.trim(),
                     email = request.email.trim().lowercase(),
-                    tipo = request.tipo.trim().uppercase()
+                    tipo = "GERENTE"
                 )
             )
         }
 
         authenticate("auth-jwt") {
             get("/me") {
-                val principal = call.principal<JWTPrincipal>()
-                if (principal == null) {
-                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Token inválido ou não informado"))
+                val autenticada = call.contaAutenticada() ?: return@get
+
+                val conta = dbQuery {
+                    val usuario = UsuariosTable.selectAll().where { UsuariosTable.id eq autenticada.id }.singleOrNull()
+                    if (usuario == null || !usuario[UsuariosTable.ativo]) return@dbQuery null
+                    val restauranteId = usuario[UsuariosTable.restauranteId]
+                    val restauranteNome = restauranteId?.let { lojaId ->
+                        RestaurantesTable.selectAll().where { RestaurantesTable.id eq lojaId }
+                            .singleOrNull()?.get(RestaurantesTable.nome)
+                    }
+                    LoginResponse(
+                        id = usuario[UsuariosTable.id],
+                        nome = usuario[UsuariosTable.nome],
+                        email = usuario[UsuariosTable.email],
+                        tipo = usuario[UsuariosTable.tipo],
+                        restauranteId = restauranteId,
+                        restauranteNome = restauranteNome
+                    )
+                }
+                if (conta == null) {
+                    call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Conta indisponível"))
                     return@get
                 }
-
-                val id = principal.payload.getClaim("id").asLong() ?: 0L
-                val nome = principal.payload.getClaim("nome").asString() ?: "Usuário"
-                val email = principal.payload.getClaim("email").asString() ?: ""
-                val tipo = principal.payload.getClaim("tipo").asString() ?: "GERENTE"
-
-                call.respond(
-                    HttpStatusCode.OK,
-                    LoginResponse(
-                        token = null,
-                        expiresIn = null,
-                        id = id,
-                        nome = nome,
-                        email = email,
-                        tipo = tipo
-                    )
-                )
+                call.respond(HttpStatusCode.OK, conta)
             }
         }
     }

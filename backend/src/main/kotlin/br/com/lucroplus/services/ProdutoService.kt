@@ -7,16 +7,17 @@ import br.com.lucroplus.database.ProdutosTable
 import br.com.lucroplus.models.ProdutoDto
 import br.com.lucroplus.models.RentabilidadeDto
 import org.jetbrains.exposed.sql.Avg
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-object ProdutoService {
+class ProdutoService(private val restauranteId: Long) {
 
     suspend fun listarProdutos(): List<ProdutoDto> = dbQuery {
         ProdutosTable
             .selectAll()
-            .where { ProdutosTable.ativo eq true }
+            .where { (ProdutosTable.restauranteId eq restauranteId) and (ProdutosTable.ativo eq true) }
             .map {
                 ProdutoDto(
                     id = it[ProdutosTable.id],
@@ -34,6 +35,7 @@ object ProdutoService {
         val avgColumn = Avg(LotesTable.custoUnitario, 4)
         val custoMedioPorIngrediente = LotesTable
             .select(LotesTable.ingredienteId, avgColumn)
+            .where { LotesTable.restauranteId eq restauranteId }
             .groupBy(LotesTable.ingredienteId)
             .associate {
                 val ingId = it[LotesTable.ingredienteId]
@@ -41,15 +43,15 @@ object ProdutoService {
                 ingId to avgCost
             }
 
-        val fichasPorProduto = FichasTecnicasTable
-            .selectAll()
+        val fichasPorProduto = (FichasTecnicasTable innerJoin ProdutosTable)
+            .selectAll().where { ProdutosTable.restauranteId eq restauranteId }
             .groupBy({ it[FichasTecnicasTable.produtoId] }) {
                 it[FichasTecnicasTable.ingredienteId] to it[FichasTecnicasTable.quantidadeUsada].toDouble()
             }
 
         val produtos = ProdutosTable
             .selectAll()
-            .where { ProdutosTable.ativo eq true }
+            .where { (ProdutosTable.restauranteId eq restauranteId) and (ProdutosTable.ativo eq true) }
             .map { row ->
                 val produtoId = row[ProdutosTable.id]
                 val produtoNome = row[ProdutosTable.nome]

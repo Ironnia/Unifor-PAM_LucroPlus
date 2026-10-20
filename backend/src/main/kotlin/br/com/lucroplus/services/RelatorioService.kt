@@ -12,7 +12,7 @@ import java.time.LocalDate
 import java.time.Month
 import kotlin.math.round
 
-object RelatorioService {
+class RelatorioService(private val restauranteId: Long) {
 
     suspend fun obterDesperdicioMesAtual(): List<DesperdicioIngredienteDto> = dbQuery {
         val hojeJava = LocalDate.now()
@@ -23,7 +23,7 @@ object RelatorioService {
 
         val lotesVencidosMes = (LotesTable innerJoin IngredientesTable)
             .selectAll()
-            .where { (LotesTable.dataValidade less hojeKmp) and (LotesTable.dataValidade greaterEq primeiroDiaMesKmp) }
+            .where { (LotesTable.restauranteId eq restauranteId) and (LotesTable.dataValidade less hojeKmp) and (LotesTable.dataValidade greaterEq primeiroDiaMesKmp) }
             .toList()
 
         lotesVencidosMes
@@ -53,7 +53,7 @@ object RelatorioService {
 
         val lotesVencidos = LotesTable
             .selectAll()
-            .where { (LotesTable.dataValidade less hojeKmp) and (LotesTable.dataValidade greaterEq seisMesesAtrasKmp) }
+            .where { (LotesTable.restauranteId eq restauranteId) and (LotesTable.dataValidade less hojeKmp) and (LotesTable.dataValidade greaterEq seisMesesAtrasKmp) }
             .toList()
 
         val perdasPorMes = lotesVencidos

@@ -9,14 +9,14 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
 
-object DashboardService {
+class DashboardService(private val restauranteId: Long) {
 
     suspend fun obterKpis(): DashboardKpisDto = dbQuery {
         val dataInicioKmp = LocalDate.now().minusDays(30).toKotlinLocalDate()
 
         val vendas = VendasTable
             .selectAll()
-            .where { VendasTable.dataVenda greaterEq dataInicioKmp }
+            .where { (VendasTable.restauranteId eq restauranteId) and (VendasTable.dataVenda greaterEq dataInicioKmp) }
             .toList()
 
         val totalPedidos = vendas.size
@@ -24,7 +24,7 @@ object DashboardService {
 
         val totalProdutosVendidos = (ItensVendaTable innerJoin VendasTable)
             .selectAll()
-            .where { VendasTable.dataVenda greaterEq dataInicioKmp }
+            .where { (VendasTable.restauranteId eq restauranteId) and (VendasTable.dataVenda greaterEq dataInicioKmp) }
             .sumOf { it[ItensVendaTable.quantidade] }
 
         val ticketMedio = if (totalPedidos > 0) {
@@ -60,12 +60,12 @@ object DashboardService {
 
         val itensVendaPeriodo = (ItensVendaTable innerJoin VendasTable innerJoin ProdutosTable)
             .selectAll()
-            .where { (VendasTable.dataVenda greaterEq dataInicioKmp) and (VendasTable.dataVenda lessEq dataFimKmp) }
+            .where { (VendasTable.restauranteId eq restauranteId) and (ProdutosTable.restauranteId eq restauranteId) and (VendasTable.dataVenda greaterEq dataInicioKmp) and (VendasTable.dataVenda lessEq dataFimKmp) }
             .toList()
 
         val produtosAtivos = ProdutosTable
             .selectAll()
-            .where { ProdutosTable.ativo eq true }
+            .where { (ProdutosTable.restauranteId eq restauranteId) and (ProdutosTable.ativo eq true) }
             .map { it[ProdutosTable.id] to it[ProdutosTable.nome] }
 
         val resultado = mutableListOf<PrevisaoDemandaDto>()
@@ -106,7 +106,7 @@ object DashboardService {
 
         val vendas = VendasTable
             .selectAll()
-            .where { VendasTable.dataVenda greaterEq dataInicioKmp }
+            .where { (VendasTable.restauranteId eq restauranteId) and (VendasTable.dataVenda greaterEq dataInicioKmp) }
             .toList()
 
         return vendas
@@ -124,7 +124,7 @@ object DashboardService {
     private fun obterTop5MaisVendidosInterno(): List<ProdutoRankingDto> {
         val itens = (ItensVendaTable innerJoin ProdutosTable)
             .selectAll()
-            .where { ProdutosTable.ativo eq true }
+            .where { (ProdutosTable.restauranteId eq restauranteId) and (ProdutosTable.ativo eq true) }
             .toList()
 
         return itens
@@ -151,12 +151,12 @@ object DashboardService {
         val dataLimiteKmp = LocalDate.now().minusDays(15).toKotlinLocalDate()
         val todosProdutos = ProdutosTable
             .selectAll()
-            .where { ProdutosTable.ativo eq true }
+            .where { (ProdutosTable.restauranteId eq restauranteId) and (ProdutosTable.ativo eq true) }
             .map { it[ProdutosTable.id] to it[ProdutosTable.nome] }
 
         val itensRecentes = (ItensVendaTable innerJoin VendasTable)
             .selectAll()
-            .where { VendasTable.dataVenda greaterEq dataLimiteKmp }
+            .where { (VendasTable.restauranteId eq restauranteId) and (VendasTable.dataVenda greaterEq dataLimiteKmp) }
             .toList()
             .groupBy { it[ItensVendaTable.produtoId] }
 

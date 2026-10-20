@@ -58,7 +58,7 @@ class PromocaoRoutesTest {
     }
 
     private val algoritmo = Algorithm.HMAC256("chave-ficticia-somente-para-testes-promocao")
-    private val token = JWT.create().withAudience("teste").withIssuer("teste").sign(algoritmo)
+    private val token = JWT.create().withAudience("teste").withIssuer("teste").withClaim("id", 1L).sign(algoritmo)
     private val json = Json { ignoreUnknownKeys = true }
 
     private fun Application.modulo(f: PromocaoFixture) {

@@ -35,6 +35,7 @@ class ConfiguracaoRoutesTest {
         .sign(testAlgorithm)
 
     private fun Application.configurarModuloDeTeste() {
+        bancoContaTeste(admin = true)
         install(Authentication) {
             jwt("auth-jwt") {
                 realm = "LucroPlus Test"
@@ -61,6 +62,7 @@ class ConfiguracaoRoutesTest {
 
     private fun HttpRequestBuilder.autorizar() {
         header(HttpHeaders.Authorization, "Bearer $token")
+        parameter("restauranteId", 1)
         contentType(ContentType.Application.Json)
     }
 

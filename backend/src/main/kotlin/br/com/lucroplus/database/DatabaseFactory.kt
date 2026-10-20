@@ -49,6 +49,7 @@ object DatabaseFactory {
             try {
                 transaction {
                     SchemaUtils.createMissingTablesAndColumns(
+                        RestaurantesTable,
                         UsuariosTable,
                         ProdutosTable,
                         IngredientesTable,
@@ -59,7 +60,9 @@ object DatabaseFactory {
                         PromocoesTable,
                         AlertasTable,
                         AcoesAlertaTable,
-                        ConfiguracoesTable
+                        ConfiguracoesTable,
+                        ConfiguracoesRestauranteTable,
+                        BcgHistoricoTable
                     )
 
                     if (UsuariosTable.selectAll().count() == 0L) {

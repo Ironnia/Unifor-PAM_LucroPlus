@@ -1,19 +1,18 @@
 package br.com.lucroplus.services
 
-import br.com.lucroplus.database.ConfiguracoesTable
+import br.com.lucroplus.database.ConfiguracoesRestauranteTable
+import br.com.lucroplus.database.RestaurantesTable
 import br.com.lucroplus.database.DatabaseFactory.dbQuery
 import br.com.lucroplus.models.PdvConfigDto
 import br.com.lucroplus.models.TestarConexaoResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.upsert
 import java.sql.DriverManager
 
-object ConfiguracaoService {
-
-    private const val DEFAULT_JDBC_URL =
-        "jdbc:mysql://localhost:3306/pdv_ficticio?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true"
+class ConfiguracaoService(private val restauranteId: Long) {
 
     fun validarPdvConfig(config: PdvConfigDto): String? {
         val url = config.url?.trim().orEmpty()
@@ -47,35 +46,42 @@ object ConfiguracaoService {
         return "jdbc:mysql://$host:$porta/$banco?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true"
     }
 
-    suspend fun obterPdvConfig(): PdvConfigDto = dbQuery {
-        val configs = ConfiguracoesTable
-            .selectAll()
-            .associate { it[ConfiguracoesTable.chave] to (it[ConfiguracoesTable.valor] ?: "") }
+    suspend fun obterPdvConfig(incluirSenha: Boolean = false): PdvConfigDto = dbQuery {
+        val configs = ConfiguracoesRestauranteTable
+            .selectAll().where { ConfiguracoesRestauranteTable.restauranteId eq restauranteId }
+            .associate { it[ConfiguracoesRestauranteTable.chave] to (it[ConfiguracoesRestauranteTable.valor] ?: "") }
 
-        val url = configs["pdv_url"]?.ifBlank { null } ?: DEFAULT_JDBC_URL
-        val username = configs["pdv_username"]?.ifBlank { null } ?: "root"
+        val url = configs["pdv_url"]?.ifBlank { null }
+        val username = configs["pdv_username"]?.ifBlank { null }
 
         PdvConfigDto(
             url = url,
             username = username,
-            password = null
+
+            password = if (incluirSenha) configs["pdv_password"] else null
         )
     }
 
     suspend fun salvarPdvConfig(config: PdvConfigDto): Unit = dbQuery {
+
+        require(RestaurantesTable.selectAll().where { RestaurantesTable.id eq restauranteId }
+            .forUpdate().singleOrNull() != null) { "Restaurante não encontrado" }
         val url = montarJdbcUrl(config)
-        val user = config.usuario ?: config.username ?: "root"
+        val user = config.usuario ?: config.username
         val pass = config.senha ?: config.password ?: ""
 
-        ConfiguracoesTable.upsert {
+        ConfiguracoesRestauranteTable.upsert {
+            it[ConfiguracoesRestauranteTable.restauranteId] = this@ConfiguracaoService.restauranteId
             it[chave] = "pdv_url"
             it[valor] = url
         }
-        ConfiguracoesTable.upsert {
+        ConfiguracoesRestauranteTable.upsert {
+            it[ConfiguracoesRestauranteTable.restauranteId] = this@ConfiguracaoService.restauranteId
             it[chave] = "pdv_username"
             it[valor] = user
         }
-        ConfiguracoesTable.upsert {
+        if (config.senha != null || config.password != null) ConfiguracoesRestauranteTable.upsert {
+            it[ConfiguracoesRestauranteTable.restauranteId] = this@ConfiguracaoService.restauranteId
             it[chave] = "pdv_password"
             it[valor] = pass
         }
@@ -129,6 +135,7 @@ object ConfiguracaoService {
             TestarConexaoResponse(
                 sucesso = false,
                 tempoRespostaMs = tempoMs,
+
                 mensagem = "Não foi possível conectar ao banco do PDV.",
                 detalhes = "Verifique host, porta, banco, usuário, senha e disponibilidade da rede."
             )

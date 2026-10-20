@@ -1,5 +1,6 @@
 package br.com.lucroplus.routes
 
+import br.com.lucroplus.security.restauranteAutenticado
 import br.com.lucroplus.models.ErrorResponse
 import br.com.lucroplus.models.MessageResponse
 import br.com.lucroplus.services.AcaoAlerta
@@ -12,20 +13,24 @@ import io.ktor.server.auth.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Route.alertaRoutes(operacoes: AlertaOperacoes = AlertaService) {
+fun Route.alertaRoutes(operacoes: AlertaOperacoes? = null) {
     authenticate("auth-jwt") {
         route("/alertas") {
             get("/vencimento") {
-                call.respond(HttpStatusCode.OK, operacoes.obterAlertasVencimento())
+                val restauranteId = call.restauranteAutenticado() ?: return@get
+                call.respond(HttpStatusCode.OK, (operacoes ?: AlertaService(restauranteId)).obterAlertasVencimento())
             }
             patch("/{id}/salvar-lote") {
-                call.responderAcao(operacoes, AcaoAlerta.SALVAR_LOTE)
+                val restauranteId = call.restauranteAutenticado() ?: return@patch
+                call.responderAcao(operacoes ?: AlertaService(restauranteId), AcaoAlerta.SALVAR_LOTE)
             }
             patch("/{id}/ciente") {
-                call.responderAcao(operacoes, AcaoAlerta.CIENTE)
+                val restauranteId = call.restauranteAutenticado() ?: return@patch
+                call.responderAcao(operacoes ?: AlertaService(restauranteId), AcaoAlerta.CIENTE)
             }
             patch("/{id}/visualizar") {
-                call.responderAcao(operacoes, AcaoAlerta.CIENTE)
+                val restauranteId = call.restauranteAutenticado() ?: return@patch
+                call.responderAcao(operacoes ?: AlertaService(restauranteId), AcaoAlerta.CIENTE)
             }
         }
     }

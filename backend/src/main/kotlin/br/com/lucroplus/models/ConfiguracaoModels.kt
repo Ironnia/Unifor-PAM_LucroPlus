@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class PdvConfigDto(
+
     val url: String? = null,
     val host: String? = null,
     val porta: Int? = null,
@@ -17,7 +18,11 @@ data class PdvConfigDto(
 @Serializable
 data class TestarConexaoResponse(
     val sucesso: Boolean,
+
     val tempoRespostaMs: Long = 0L,
     val mensagem: String,
     val detalhes: String? = null
 )
+
+@Serializable
+data class RestauranteDto(val id: Long, val nome: String)

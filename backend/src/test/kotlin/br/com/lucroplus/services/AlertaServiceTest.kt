@@ -1,5 +1,9 @@
 package br.com.lucroplus.services
 
+import br.com.lucroplus.database.RestaurantesTable
+import br.com.lucroplus.database.UsuariosTable
+import br.com.lucroplus.routes.prepararContaTeste
+
 import br.com.lucroplus.database.PromocoesTable
 import br.com.lucroplus.database.ProdutosTable
 import br.com.lucroplus.database.AcoesAlertaTable
@@ -27,9 +31,8 @@ class AlertaServiceTest {
         )
         org.jetbrains.exposed.sql.transactions.TransactionManager.defaultDatabase = banco
         transaction(banco) {
-            SchemaUtils.createMissingTablesAndColumns(
-                IngredientesTable, ProdutosTable, LotesTable, AlertasTable, AcoesAlertaTable, PromocoesTable
-            )
+            SchemaUtils.createMissingTablesAndColumns(UsuariosTable, RestaurantesTable, IngredientesTable, ProdutosTable, LotesTable, AlertasTable, AcoesAlertaTable, PromocoesTable)
+            prepararContaTeste()
             PromocoesTable.deleteAll()
             AcoesAlertaTable.deleteAll()
             AlertasTable.deleteAll()
@@ -40,12 +43,14 @@ class AlertaServiceTest {
 
     private fun criarLote(diasAteValidade: Long, quantidade: Int = 1000): Long = transaction {
         val ingredienteId = IngredientesTable.insert {
+            it[IngredientesTable.restauranteId] = 1
             it[nome] = "Tomate"
             it[unidade] = "g"
             it[pesoPorUnidadeG] = 1
             it[estoqueMinimo] = BigDecimal.ZERO
         }[IngredientesTable.id]
         LotesTable.insert {
+            it[LotesTable.restauranteId] = 1
             it[LotesTable.ingredienteId] = ingredienteId
             it[quantidadeG] = quantidade
             it[custoUnitario] = BigDecimal("0.0100")
@@ -59,32 +64,32 @@ class AlertaServiceTest {
     fun `salvar lote remove alerta e inclui uma unica entrada na fila`() = runBlocking {
         novoBanco()
         val loteId = criarLote(7)
-        val alerta = AlertaService.obterAlertasVencimento().single()
+        val alerta = AlertaService(1).obterAlertasVencimento().single()
         assertEquals(loteId, alerta.loteId)
         assertEquals("CRITICO", alerta.criticidade)
         assertEquals(LocalDate.now().plusDays(6).toString(), alerta.prazoLimiteVenda)
 
         assertEquals(ResultadoAcaoAlerta.CONCLUIDA,
-            AlertaService.executarAcao(alerta.id, AcaoAlerta.SALVAR_LOTE))
-        assertTrue(AlertaService.obterAlertasVencimento().isEmpty())
-        assertEquals(loteId, AlertaService.listarLotesPendentes().single().loteId)
+            AlertaService(1).executarAcao(alerta.id, AcaoAlerta.SALVAR_LOTE))
+        assertTrue(AlertaService(1).obterAlertasVencimento().isEmpty())
+        assertEquals(loteId, AlertaService(1).listarLotesPendentes().single().loteId)
         assertEquals(ResultadoAcaoAlerta.JA_APLICADA,
-            AlertaService.executarAcao(alerta.id, AcaoAlerta.SALVAR_LOTE))
+            AlertaService(1).executarAcao(alerta.id, AcaoAlerta.SALVAR_LOTE))
         assertEquals(ResultadoAcaoAlerta.CONFLITO,
-            AlertaService.executarAcao(alerta.id, AcaoAlerta.CIENTE))
-        assertEquals(1, AlertaService.listarLotesPendentes().size)
+            AlertaService(1).executarAcao(alerta.id, AcaoAlerta.CIENTE))
+        assertEquals(1, AlertaService(1).listarLotesPendentes().size)
     }
 
     @Test
     fun `ciente descarta alerta sem criar promocao pendente`() = runBlocking {
         novoBanco()
         criarLote(15)
-        val alerta = AlertaService.obterAlertasVencimento().single()
+        val alerta = AlertaService(1).obterAlertasVencimento().single()
         assertEquals("ATENCAO", alerta.criticidade)
         assertEquals(ResultadoAcaoAlerta.CONCLUIDA,
-            AlertaService.executarAcao(alerta.id, AcaoAlerta.CIENTE))
-        assertTrue(AlertaService.obterAlertasVencimento().isEmpty())
-        assertTrue(AlertaService.listarLotesPendentes().isEmpty())
+            AlertaService(1).executarAcao(alerta.id, AcaoAlerta.CIENTE))
+        assertTrue(AlertaService(1).obterAlertasVencimento().isEmpty())
+        assertTrue(AlertaService(1).listarLotesPendentes().isEmpty())
     }
 
     @Test
@@ -95,7 +100,7 @@ class AlertaServiceTest {
         criarLote(5, quantidade = 0)
         val valido = criarLote(8)
 
-        val alertas = AlertaService.obterAlertasVencimento()
+        val alertas = AlertaService(1).obterAlertasVencimento()
         assertEquals(listOf(valido), alertas.map { it.loteId })
     }
 }

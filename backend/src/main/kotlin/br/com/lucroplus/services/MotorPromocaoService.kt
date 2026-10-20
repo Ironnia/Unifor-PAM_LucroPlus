@@ -11,11 +11,12 @@ import java.math.RoundingMode
 import java.time.DayOfWeek
 import java.time.LocalDate
 
-object MotorPromocaoService {
+class MotorPromocaoService(private val restauranteId: Long) {
     suspend fun listarSugestoes(hoje: LocalDate = LocalDate.now()): List<SugestaoPromocaoDto> = dbQuery {
         val lotesSalvos = (AcoesAlertaTable innerJoin LotesTable innerJoin IngredientesTable)
             .selectAll()
             .where {
+                (LotesTable.restauranteId eq restauranteId) and (IngredientesTable.restauranteId eq restauranteId) and
                 (AcoesAlertaTable.acao eq AcaoAlerta.SALVAR_LOTE.name) and
                     (LotesTable.quantidadeG greater 0) and
                     (LotesTable.dataValidade greaterEq RegraValidadeLote.validadeMinima(hoje).toKotlinLocalDate()) and
@@ -29,7 +30,7 @@ object MotorPromocaoService {
                     LocalDate.parse(row[LotesTable.dataValidade].toString()), row[LotesTable.custoUnitario]
                 )
             }
-        val encaminhados = PromocoesTable.selectAll().mapNotNull { it[PromocoesTable.loteId] }.toSet()
+        val encaminhados = PromocoesTable.selectAll().where { PromocoesTable.restauranteId eq restauranteId }.mapNotNull { it[PromocoesTable.loteId] }.toSet()
         calcularSugestoes(lotesSalvos.filter { it.id !in encaminhados }, hoje)
     }
 
@@ -37,6 +38,7 @@ object MotorPromocaoService {
         val lotesAtivos = (AlertasTable innerJoin LotesTable innerJoin IngredientesTable)
             .selectAll()
             .where {
+                (LotesTable.restauranteId eq restauranteId) and (IngredientesTable.restauranteId eq restauranteId) and
                 (AlertasTable.tipo eq "VENCIMENTO") and
                     (AlertasTable.visualizado eq false) and
                     (LotesTable.quantidadeG greater 0) and
@@ -68,7 +70,7 @@ object MotorPromocaoService {
         if (lotes.isEmpty()) return emptyList()
 
         val fichas = (FichasTecnicasTable innerJoin ProdutosTable)
-            .selectAll().where { ProdutosTable.ativo eq true }
+            .selectAll().where { (ProdutosTable.restauranteId eq restauranteId) and (ProdutosTable.ativo eq true) }
             .map { row ->
                 ItemFicha(
                     row[ProdutosTable.id], row[ProdutosTable.nome], row[ProdutosTable.preco],
@@ -79,6 +81,7 @@ object MotorPromocaoService {
         val fichasPorProduto = fichas.groupBy { it.produtoId }
         val custoPorIngrediente = LotesTable.selectAll()
             .where {
+                (LotesTable.restauranteId eq restauranteId) and
                 (LotesTable.quantidadeG greater 0) and
                     (LotesTable.dataValidade greaterEq hoje.toKotlinLocalDate())
             }
@@ -86,12 +89,13 @@ object MotorPromocaoService {
             .map { it[LotesTable.ingredienteId] to it[LotesTable.custoUnitario] }
             .groupBy({ it.first }, { it.second })
             .mapValues { it.value.first() } // primeiro lote fifo
-        val pesosPorUnidade = IngredientesTable.selectAll()
+        val pesosPorUnidade = IngredientesTable.selectAll().where { IngredientesTable.restauranteId eq restauranteId }
             .associate { it[IngredientesTable.id] to it[IngredientesTable.pesoPorUnidadeG] }
 
         val vendas = (ItensVendaTable innerJoin VendasTable)
             .selectAll()
             .where {
+                (VendasTable.restauranteId eq restauranteId) and
                 (VendasTable.dataVenda greaterEq hoje.minusDays(29).toKotlinLocalDate()) and
                     (VendasTable.dataVenda lessEq hoje.toKotlinLocalDate())
             }

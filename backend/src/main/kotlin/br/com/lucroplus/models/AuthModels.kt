@@ -23,7 +23,9 @@ data class LoginResponse(
     val id: Long? = null,
     val nome: String,
     val email: String,
-    val tipo: String
+    val tipo: String,
+    val restauranteId: Long? = null,
+    val restauranteNome: String? = null
 )
 
 @Serializable

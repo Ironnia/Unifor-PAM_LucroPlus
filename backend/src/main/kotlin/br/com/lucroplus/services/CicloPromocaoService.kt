@@ -23,21 +23,22 @@ interface PromocaoOperacoes {
 }
 
 // controle do ciclo de vida das promocoes
-class CicloPromocaoService(private val hoje: () -> LocalDate = { LocalDate.now() }) : PromocaoOperacoes {
+class CicloPromocaoService(private val restauranteId: Long, private val hoje: () -> LocalDate = { LocalDate.now() }) : PromocaoOperacoes {
     override suspend fun criar(request: CriarPromocaoRequest): PromocaoDto = dbQuery {
         if (request.loteId <= 0 || request.pratoId <= 0) erro(400, "IDs devem ser positivos")
         val lote = travarLote(request.loteId)
-        val existente = PromocoesTable.selectAll().where {
+        val existente = PromocoesTable.selectAll().where { (PromocoesTable.restauranteId eq restauranteId) and
             (PromocoesTable.loteId eq request.loteId) and (PromocoesTable.produtoId eq request.pratoId)
         }.forUpdate().singleOrNull()
         if (existente != null) return@dbQuery dto(existente)
         validarLote(lote, request.pratoId)
-        if (PromocoesTable.selectAll().where {
+        if (PromocoesTable.selectAll().where { (PromocoesTable.restauranteId eq restauranteId) and
                 (PromocoesTable.loteId eq request.loteId) and
                     (PromocoesTable.status neq StatusPromocao.RECUSADA.name)
             }.forUpdate().any()) erro(409, "O lote já possui uma promoção")
 
         val id = PromocoesTable.insert {
+            it[PromocoesTable.restauranteId] = this@CicloPromocaoService.restauranteId
             it[loteId] = request.loteId; it[produtoId] = request.pratoId
             it[descontoPct] = null; it[motivo] = "Promoção para o lote ${request.loteId} salvo pelo gerente"
             it[status] = StatusPromocao.SUGERIDA.name
@@ -47,7 +48,7 @@ class CicloPromocaoService(private val hoje: () -> LocalDate = { LocalDate.now()
     }
 
     override suspend fun listar(status: StatusPromocao?): List<PromocaoDto> = dbQuery {
-        val consulta = PromocoesTable.selectAll().where { PromocoesTable.loteId.isNotNull() }
+        val consulta = PromocoesTable.selectAll().where { (PromocoesTable.restauranteId eq restauranteId) and (PromocoesTable.loteId.isNotNull()) }
         if (status != null) consulta.andWhere { PromocoesTable.status eq status.name }
         consulta.orderBy(PromocoesTable.id, SortOrder.DESC).map { dto(it) }
     }
@@ -93,7 +94,7 @@ class CicloPromocaoService(private val hoje: () -> LocalDate = { LocalDate.now()
 
     override suspend fun descartarPendente(loteId: Long): Unit = dbQuery {
         travarLote(loteId)
-        if (PromocoesTable.selectAll().where { PromocoesTable.loteId eq loteId }.forUpdate().any()) {
+        if (PromocoesTable.selectAll().where { (PromocoesTable.restauranteId eq restauranteId) and (PromocoesTable.loteId eq loteId) }.forUpdate().any()) {
             erro(409, "Lote já possui promoção; use a ação da campanha")
         }
         val acao = AcoesAlertaTable.selectAll().where { AcoesAlertaTable.loteId eq loteId }
@@ -123,7 +124,7 @@ class CicloPromocaoService(private val hoje: () -> LocalDate = { LocalDate.now()
     }
 
     override suspend fun resumo(): ResumoPromocoesDto = dbQuery {
-        val registros = PromocoesTable.selectAll().where { PromocoesTable.loteId.isNotNull() }.toList()
+        val registros = PromocoesTable.selectAll().where { (PromocoesTable.restauranteId eq restauranteId) and (PromocoesTable.loteId.isNotNull()) }.toList()
         ResumoPromocoesDto(
             registros.count { it[PromocoesTable.status] == StatusPromocao.EM_ANDAMENTO.name }.toLong(),
             registros.filter { it[PromocoesTable.status] == StatusPromocao.CONCLUIDA_SUCESSO.name }
@@ -140,23 +141,24 @@ class CicloPromocaoService(private val hoje: () -> LocalDate = { LocalDate.now()
         }.any()
         if (!salvo) erro(409, "O lote precisa estar marcado como Salvar Lote")
         val compativel = (FichasTecnicasTable innerJoin ProdutosTable).selectAll().where {
+            (ProdutosTable.restauranteId eq restauranteId) and
             (FichasTecnicasTable.ingredienteId eq lote[LotesTable.ingredienteId]) and
                 (ProdutosTable.id eq pratoId) and (ProdutosTable.ativo eq true)
         }.any()
         if (!compativel) erro(400, "Prato ativo deve utilizar o ingrediente do lote")
     }
 
-    private fun travarLote(id: Long): ResultRow = LotesTable.selectAll().where { LotesTable.id eq id }
+    private fun travarLote(id: Long): ResultRow = LotesTable.selectAll().where { (LotesTable.restauranteId eq restauranteId) and (LotesTable.id eq id) }
         .forUpdate().singleOrNull() ?: erro(404, "Lote não encontrado")
 
-    private fun buscar(id: Long): ResultRow = PromocoesTable.selectAll().where { PromocoesTable.id eq id }
+    private fun buscar(id: Long): ResultRow = PromocoesTable.selectAll().where { (PromocoesTable.restauranteId eq restauranteId) and (PromocoesTable.id eq id) }
         .singleOrNull() ?: erro(404, "Promoção não encontrada")
 
     private fun travarPromocao(id: Long): Pair<ResultRow, ResultRow> {
         val loteId = buscar(id)[PromocoesTable.loteId]
             ?: erro(409, "Promocao sem lote associado")
         val lote = travarLote(loteId)
-        val promocao = PromocoesTable.selectAll().where { PromocoesTable.id eq id }.forUpdate().single()
+        val promocao = PromocoesTable.selectAll().where { (PromocoesTable.restauranteId eq restauranteId) and (PromocoesTable.id eq id) }.forUpdate().single()
         return promocao to lote
     }
 
@@ -165,7 +167,7 @@ class CicloPromocaoService(private val hoje: () -> LocalDate = { LocalDate.now()
     }
 
     private fun dto(row: ResultRow): PromocaoDto {
-        val prato = ProdutosTable.selectAll().where { ProdutosTable.id eq row[PromocoesTable.produtoId] }.single()
+        val prato = ProdutosTable.selectAll().where { (ProdutosTable.restauranteId eq restauranteId) and (ProdutosTable.id eq row[PromocoesTable.produtoId]) }.single()
         val fim = row[PromocoesTable.dataFim]?.toString()
         return PromocaoDto(
             id = row[PromocoesTable.id], loteId = row[PromocoesTable.loteId]!!,
