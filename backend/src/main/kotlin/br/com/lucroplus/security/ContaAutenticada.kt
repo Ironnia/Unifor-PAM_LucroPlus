@@ -28,7 +28,7 @@ suspend fun ApplicationCall.contaAutenticada(): ContaAutenticada? {
         return null
     }
     // Tokens antigos, sem a claim, continuam válidos. Quando a claim existe, ela
-    if (restauranteDoToken != conta.restauranteId) {
+    if (restauranteDoToken != null && restauranteDoToken != conta.restauranteId) {
         respond(HttpStatusCode.Forbidden, ErrorResponse("Sessão vinculada a outro restaurante"))
         return null
     }
