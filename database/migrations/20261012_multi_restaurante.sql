@@ -31,7 +31,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tb_produto' AND column_name='id_externo') THEN
         ALTER TABLE tb_produto ADD COLUMN id_externo VARCHAR(100) NULL;
     END IF;
-    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tb_produto' AND index_name='uq_produtos_restaurante_externo') THEN
+        ALTER TABLE tb_produto ADD UNIQUE KEY uq_produtos_restaurante_externo(restaurante_id, id_externo);
+    END IF;
 
     -- tb_ingrediente
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tb_ingrediente' AND column_name='restaurante_id') THEN
@@ -43,7 +45,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tb_ingrediente' AND column_name='id_externo') THEN
         ALTER TABLE tb_ingrediente ADD COLUMN id_externo VARCHAR(100) NULL;
     END IF;
-    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tb_ingrediente' AND index_name='uq_ingredientes_restaurante_externo') THEN
+        ALTER TABLE tb_ingrediente ADD UNIQUE KEY uq_ingredientes_restaurante_externo(restaurante_id, id_externo);
+    END IF;
 
     -- tb_lote
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tb_lote' AND column_name='restaurante_id') THEN
@@ -55,7 +59,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tb_lote' AND column_name='id_externo') THEN
         ALTER TABLE tb_lote ADD COLUMN id_externo VARCHAR(100) NULL;
     END IF;
-    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tb_lote' AND index_name='uq_lotes_restaurante_externo') THEN
+        ALTER TABLE tb_lote ADD UNIQUE KEY uq_lotes_restaurante_externo(restaurante_id, id_externo);
+    END IF;
 
     -- tb_venda
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tb_venda' AND column_name='restaurante_id') THEN
@@ -67,7 +73,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tb_venda' AND column_name='id_externo') THEN
         ALTER TABLE tb_venda ADD COLUMN id_externo VARCHAR(100) NULL;
     END IF;
-    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='tb_venda' AND index_name='uq_vendas_restaurante_externo') THEN
+        ALTER TABLE tb_venda ADD UNIQUE KEY uq_vendas_restaurante_externo(restaurante_id, id_externo);
+    END IF;
 
     -- tb_promocao
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tb_promocao' AND column_name='restaurante_id') THEN
