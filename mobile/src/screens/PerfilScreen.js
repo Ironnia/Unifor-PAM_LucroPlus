@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#302d59',
-    padding: 16,
+    padding: 20,
     marginTop: 28,
   },
   unitHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
