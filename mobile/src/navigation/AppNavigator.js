@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import EstoqueScreen from '../screens/EstoqueScreen';
-import RankingScreen from '../screens/RankingScreen';
 import AlertasScreen from '../screens/AlertasScreen';
 import { contagemNavegacao, normalizarContagemNavegacao } from '../screens/alertasViewModel';
 import PerfilScreen from '../screens/PerfilScreen';
@@ -94,8 +93,6 @@ export default function AppNavigator() {
               iconName = focused ? 'stats-chart' : 'stats-chart-outline';
             } else if (route.name === 'Estoque') {
               iconName = focused ? 'cube' : 'cube-outline';
-            } else if (route.name === 'Cardápio') {
-              iconName = focused ? 'restaurant' : 'restaurant-outline';
             } else if (route.name === 'Alertas') {
               iconName = focused ? 'notifications' : 'notifications-outline';
             } else if (route.name === 'Perfil') {
@@ -139,7 +136,6 @@ export default function AppNavigator() {
       >
         <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Dashboard' }} />
         <Tab.Screen name="Estoque" component={EstoqueScreen} />
-        <Tab.Screen name="Cardápio" component={RankingScreen} />
         <Tab.Screen name="Alertas" options={{ title: 'Alertas & Ações', tabBarLabel: 'Alertas' }}>
           {() => <AlertasScreen onCountChange={setAlertCount} />}
         </Tab.Screen>
