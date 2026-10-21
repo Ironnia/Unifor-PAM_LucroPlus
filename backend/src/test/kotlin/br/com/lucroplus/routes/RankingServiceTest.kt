@@ -57,6 +57,24 @@ class RankingServiceTest {
     }
 
     @Test
+    fun `desempata por unidades e depois pelo id do produto`() {
+        val produtos = listOf(
+            ProdutoRanking(3, "C", BigDecimal("12"), BigDecimal("2")),
+            ProdutoRanking(2, "B", BigDecimal("12"), BigDecimal("2")),
+            ProdutoRanking(1, "A", BigDecimal("7"), BigDecimal("2"))
+        )
+
+        val ranking = CalculoRanking.calcular(
+            produtos,
+            vendasAtuais = mapOf(1L to 4, 2L to 2, 3L to 2),
+            vendasAnteriores = emptyMap(),
+            periodoAnteriorComparavel = false
+        )
+
+        assertEquals(listOf(1L, 2L, 3L), ranking.map { it.produtoId })
+    }
+
+    @Test
     fun `variacao e posicao anterior menos posicao atual`() {
         val produtos = listOf(
             ProdutoRanking(1, "Subiu", BigDecimal("10"), BigDecimal("5")),
