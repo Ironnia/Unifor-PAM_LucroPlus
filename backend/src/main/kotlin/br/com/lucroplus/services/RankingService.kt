@@ -198,8 +198,10 @@ internal object CalculoRanking {
                 nome = item.produto.nome,
                 preco = item.produto.preco.moeda().toDouble(),
                 cmv = item.produto.cmv.moeda().toDouble(),
-                margemPct = margemUnitaria.multiply(BigDecimal(100))
-                    .divide(item.produto.preco, 2, RoundingMode.HALF_UP).toDouble(),
+                margemPct = if (item.produto.preco > BigDecimal.ZERO) {
+                    margemUnitaria.multiply(BigDecimal(100))
+                        .divide(item.produto.preco, 2, RoundingMode.HALF_UP).toDouble()
+                } else 0.0,
                 vendasUnidades = item.unidades,
                 lucroBrutoTotal = item.lucroTotal.moeda().toDouble(),
                 variacaoPosicao = posicoesAnteriores[item.produto.produtoId]
