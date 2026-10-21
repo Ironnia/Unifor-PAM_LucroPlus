@@ -5,6 +5,7 @@ import br.com.lucroplus.models.ErrorResponse
 import br.com.lucroplus.models.HealthResponse
 import br.com.lucroplus.routes.alertaRoutes
 import br.com.lucroplus.routes.authRoutes
+import br.com.lucroplus.routes.cardapioRoutes
 import br.com.lucroplus.routes.configuracaoRoutes
 import br.com.lucroplus.routes.dashboardRoutes
 import br.com.lucroplus.routes.importacaoRoutes
@@ -106,6 +107,7 @@ fun Application.module() {
         }
 
         authRoutes()
+        cardapioRoutes()
         produtoRoutes()
         alertaRoutes()
         promocaoRoutes()
