@@ -219,6 +219,8 @@ internal object CalculoRanking {
             ItemCalculado(0, produto, unidades, lucro)
         }.sortedWith(
             compareByDescending<ItemCalculado> { it.lucroTotal }
+                .thenByDescending { it.unidades }
+                .thenBy { it.produto.produtoId }
         ).mapIndexed { indice, item -> item.copy(posicao = indice + 1) }
 
     private fun BigDecimal.moeda(): BigDecimal = setScale(2, RoundingMode.HALF_UP)
