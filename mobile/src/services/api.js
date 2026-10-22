@@ -2,7 +2,6 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config/environment';
 import { sessionStorage } from './sessionStorage';
 
-
 const client = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000, // 10 segundos de timeout para evitar travamento de UI
@@ -18,6 +17,7 @@ let invalidationPromise = null;
 
 const SESSION_EXPIRED_MESSAGE = 'Sua sessão expirou. Entre novamente.';
 const SESSION_CLEAR_FAILED_MESSAGE = 'Sua sessão expirou, mas não foi possível remover o acesso salvo neste aparelho. Tente novamente.';
+const NETWORK_ERROR_MESSAGE = 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.';
 
 export const setAuthToken = (token) => {
   authToken = token;
@@ -45,6 +45,12 @@ client.interceptors.request.use((config) => {
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
+    if (!error.response && (
+      ['ERR_NETWORK', 'ECONNREFUSED', 'ECONNABORTED', 'ETIMEDOUT'].includes(error.code)
+      || error.message === 'Network Error'
+    )) {
+      error.message = NETWORK_ERROR_MESSAGE;
+    }
     const requestToken = error.config?.sessionToken;
     if (error.response?.status === 401 && requestToken && requestToken === authToken) {
       setAuthToken(null);
@@ -122,6 +128,21 @@ export const lotesApi = {
     const response = await client.get('/lotes');
     return response.data;
   },
+  getHistorico: async (ingredienteId) => {
+    const response = await client.get(`/lotes/${ingredienteId}/historico`);
+    return response.data;
+  },
+};
+
+export const cardapioApi = {
+  getRanking: async () => {
+    const response = await client.get('/cardapio/ranking');
+    return response.data;
+  },
+  getBcg: async () => {
+    const response = await client.get('/bcg');
+    return response.data;
+  },
 };
 
 export const alertasApi = {
@@ -146,6 +167,7 @@ export const promocoesApi = {
   criar: async (loteId, pratoId) => (await client.post('/promocoes', { loteId, pratoId })).data,
   ativar: async (id, dados) => (await client.patch(`/promocoes/${id}/ativar`, dados)).data,
   recusar: async (id) => (await client.patch(`/promocoes/${id}/recusar`)).data,
+  cancelar: async (id) => (await client.patch(`/promocoes/${id}/cancelar`)).data,
   descartar: async (loteId) => (await client.patch(`/promocoes/pendentes/${loteId}/descartar`)).data,
   confirmar: async (id, loteEscoado) => (await client.patch(`/promocoes/${id}/confirmar`, { loteEscoado })).data,
   getPendentes: async () => {
@@ -158,6 +180,21 @@ export const promocoesApi = {
 export const pdvApi = {
   testarConexao: async (dados) => {
     const response = await client.post('/configuracoes/pdv/testar-conexao', dados);
+    return response.data;
+  },
+};
+
+export const dashboardApi = {
+  getKpis: async () => {
+    const response = await client.get('/dashboard/kpis');
+    return response.data;
+  },
+  getStatusPdv: async () => {
+    const response = await client.get('/importacao/pdv/status');
+    return response.data;
+  },
+  sincronizarPdv: async () => {
+    const response = await client.post('/importacao/pdv', undefined, { timeout: 60000 });
     return response.data;
   },
 };
