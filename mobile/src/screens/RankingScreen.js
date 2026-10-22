@@ -55,7 +55,7 @@ export default function RankingScreen() {
         accessibilityRole="button"
         accessibilityLabel={`Posição ${item.posicao}, ${item.nome}`}
       >
-        <Text style={styles.nome}>{podio?.medalha || '•'} {item.posicao}º • {item.nome}</Text>
+        <Text style={styles.nome} numberOfLines={2}>{podio?.medalha || '•'} {item.posicao}º • {item.nome}</Text>
         <View style={styles.linhaCompacta}>
           <Text style={styles.lucro}>{formatarMoeda(item.lucroBrutoTotal)}</Text>
           <Text style={styles.detalhe}>Margem: {formatarPercentual(item.margemPct)}</Text>
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   badge: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, gap: 5 },
   ponto: { width: 7, height: 7, borderRadius: 4 },
   badgeTexto: { fontSize: 10, fontWeight: 'bold' },
-  nome: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  nome: { color: '#fff', fontSize: 16, fontWeight: 'bold', flexShrink: 1 },
   lucro: { color: '#c7f9cc', fontSize: 17, fontWeight: 'bold' },
   linhaCompacta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 10 },
   categoria: { fontSize: 12, fontWeight: 'bold', flexShrink: 1, textAlign: 'right' },
