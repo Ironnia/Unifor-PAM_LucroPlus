@@ -51,7 +51,7 @@ export default function RankingScreen() {
     const saude = obterSaudeMargem(item.margemPct);
     return (
       <TouchableOpacity
-        style={styles.card}
+        style={[styles.card, podio && { borderColor: podio.cor, borderWidth: 2 }]}
         accessibilityRole="button"
         accessibilityLabel={`Posição ${item.posicao}, ${item.nome}`}
       >
