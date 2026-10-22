@@ -20,6 +20,13 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 
+/**
+ * Calcula o ranking MTD de uma única loja.
+ *
+ * O custo por grama de cada ingrediente é uma média ponderada pelos saldos dos
+ * lotes da loja. Assim, um lote pequeno e caro não distorce o CMV como se tivesse
+ * o mesmo peso de um lote grande e barato.
+ */
 class RankingService(private val restauranteId: Long) {
     suspend fun listar(
         hoje: LocalDate = LocalDate.now(ZoneId.of("America/Fortaleza"))
@@ -143,7 +150,13 @@ class RankingService(private val restauranteId: Long) {
                 item.copy(desempenho6Meses = serie)
             }
         }
-        return ranking
+        val bcgPorProduto = BcgService(restauranteId).listar(hoje).pratos.associateBy { it.produtoId }
+        return ranking.map {
+            it.copy(
+                categoriaBcg = bcgPorProduto[it.produtoId]?.categoriaBcg,
+                historicoBcg = bcgPorProduto[it.produtoId]?.historicoBcg.orEmpty()
+            )
+        }
     }
 }
 
@@ -154,6 +167,7 @@ internal data class ProdutoRanking(
     val cmv: BigDecimal
 )
 
+/** Cálculos puros, separados do banco para permitir testes rápidos e determinísticos. */
 internal object CalculoRanking {
     fun custoPonderado(lotes: List<Pair<Int, BigDecimal>>): BigDecimal {
         val validos = lotes.filter { (quantidadeG, _) -> quantidadeG > 0 }

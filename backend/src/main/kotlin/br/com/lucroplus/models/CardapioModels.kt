@@ -9,6 +9,13 @@ data class MesDesempenhoDto(
     val lucroBrutoTotal: Double
 )
 
+/**
+ * Item exibido no ranking da Engenharia de Cardápio.
+ *
+ * O lucro é bruto e estimado apenas com o custo dos ingredientes. Ele não inclui
+ * despesas como aluguel, energia ou folha de pagamento, portanto não representa
+ * o lucro líquido do restaurante.
+ */
 @Serializable
 data class RankingItemDto(
     val posicao: Int,
@@ -21,5 +28,6 @@ data class RankingItemDto(
     val lucroBrutoTotal: Double,
     val variacaoPosicao: Int?,
     val categoriaBcg: String? = null,
-    val desempenho6Meses: List<MesDesempenhoDto> = emptyList()
+    val desempenho6Meses: List<MesDesempenhoDto> = emptyList(),
+    val historicoBcg: List<BcgHistoricoItem> = emptyList()
 )
