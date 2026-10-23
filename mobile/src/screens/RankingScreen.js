@@ -5,6 +5,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { cardapioApi } from '../services/api';
+import BcgEvolutionModal from '../components/BcgEvolutionModal';
+import BcgScreen from './BcgScreen';
+import { obterCategoria } from './bcgViewModel';
 import {
   formatarMoeda, formatarPercentual, obterPodio, obterSaudeMargem,
   obterVariacao, validarRanking,
@@ -18,10 +21,12 @@ const mensagemErro = (error) => {
 };
 
 export default function RankingScreen() {
+  const [aba, setAba] = useState('RANKING');
   const [ranking, setRanking] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
   const [erro, setErro] = useState('');
+  const [pratoSelecionado, setPratoSelecionado] = useState(null);
 
   const carregarRanking = useCallback(async ({ preservar = false, avisar = false } = {}) => {
     setErro('');
@@ -49,16 +54,18 @@ export default function RankingScreen() {
     const podio = obterPodio(item.posicao);
     const variacao = obterVariacao(item.variacaoPosicao);
     const saude = obterSaudeMargem(item.margemPct);
+    const categoria = obterCategoria(item.categoriaBcg);
     return (
       <TouchableOpacity
         style={[styles.card, podio && { borderColor: podio.cor, borderWidth: 2 }]}
+        onPress={() => setPratoSelecionado(item)}
         accessibilityRole="button"
-        accessibilityLabel={`Posição ${item.posicao}, ${item.nome}`}
+        accessibilityLabel={`Abrir evolução de ${item.nome}, posição ${item.posicao}`}
       >
-        <Text style={styles.nome} numberOfLines={2}>{podio?.medalha || '•'} {item.posicao}º • {item.nome}</Text>
+        <Text style={styles.nome}>{podio?.medalha || '•'} {item.posicao}º • {item.nome}</Text>
         <View style={styles.linhaCompacta}>
           <Text style={styles.lucro}>{formatarMoeda(item.lucroBrutoTotal)}</Text>
-          <Text style={styles.detalhe}>Margem: {formatarPercentual(item.margemPct)}</Text>
+          <Text style={[styles.categoria, { color: categoria?.cor || '#b8b8cc' }]}>{categoria ? `${categoria.icone} ${categoria.singular}` : 'Sem categoria'}</Text>
         </View>
         <View style={styles.linhaCompacta}>
           <Text style={[styles.variacaoTexto, { color: variacao.cor }]}>{item.variacaoPosicao == null ? '— Sem comparativo MTD' : item.variacaoPosicao === 0 ? '▬ Manteve' : `${variacao.simbolo} ${item.variacaoPosicao > 0 ? '+' : ''}${item.variacaoPosicao} posições`}</Text>
@@ -73,21 +80,41 @@ export default function RankingScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.explicacao}>
-        <Text style={styles.detalhe}>Ordenado pelo lucro bruto estimado em R$ gerado no mês.</Text>
+      <View style={styles.abas}>
+        <TouchableOpacity style={[styles.aba, aba === 'RANKING' && styles.abaAtiva]} onPress={() => setAba('RANKING')} accessibilityRole="tab" accessibilityLabel="Ranking" accessibilityState={{ selected: aba === 'RANKING' }}>
+          <Text style={styles.abaTexto}>Ranking</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.aba, aba === 'BCG' && styles.abaAtiva]} onPress={() => setAba('BCG')} accessibilityRole="tab" accessibilityLabel="Matriz BCG" accessibilityState={{ selected: aba === 'BCG' }}>
+          <Text style={styles.abaTexto}>Matriz BCG</Text>
+        </TouchableOpacity>
       </View>
-      {erro ? <Text accessibilityRole="alert" style={styles.aviso}>{erro}</Text> : null}
-      {carregando ? (
-        <View style={styles.centro}><ActivityIndicator color="#8f89ff" size="large" /><Text style={styles.detalhe}>Carregando ranking...</Text></View>
+
+      {aba === 'BCG' ? (
+        <BcgScreen />
       ) : (
-        <FlatList
-          data={ranking}
-          keyExtractor={(item) => String(item.produtoId)}
-          renderItem={renderPrato}
-          contentContainerStyle={styles.lista}
-          refreshControl={<RefreshControl refreshing={atualizando} onRefresh={atualizar} tintColor="#8f89ff" />}
-          ListEmptyComponent={<View style={styles.centro}><Ionicons name="restaurant-outline" size={44} color="#8b8ba7" /><Text style={styles.tituloVazio}>Ranking ainda vazio</Text><Text style={styles.detalhe}>Os pratos aparecerão após existirem vendas no período.</Text></View>}
-        />
+        <>
+          <View style={styles.explicacao}>
+            <Text style={styles.detalhe}>Ordenado pelo lucro bruto estimado em R$ gerado no mês.</Text>
+          </View>
+          {erro ? <Text accessibilityRole="alert" style={styles.aviso}>{erro}</Text> : null}
+          {carregando ? (
+            <View style={styles.centro}><ActivityIndicator color="#8f89ff" size="large" /><Text style={styles.detalhe}>Carregando ranking...</Text></View>
+          ) : (
+            <FlatList
+              data={ranking}
+              keyExtractor={(item) => String(item.produtoId)}
+              renderItem={renderPrato}
+              contentContainerStyle={styles.lista}
+              refreshControl={<RefreshControl refreshing={atualizando} onRefresh={atualizar} tintColor="#8f89ff" />}
+              ListEmptyComponent={<View style={styles.centro}><Ionicons name="restaurant-outline" size={44} color="#8b8ba7" /><Text style={styles.tituloVazio}>Ranking ainda vazio</Text><Text style={styles.detalhe}>Os pratos aparecerão após existirem vendas no período.</Text></View>}
+            />
+          )}
+          <BcgEvolutionModal
+            prato={pratoSelecionado}
+            visible={Boolean(pratoSelecionado)}
+            onClose={() => setPratoSelecionado(null)}
+          />
+        </>
       )}
     </View>
   );
@@ -107,10 +134,10 @@ const styles = StyleSheet.create({
   posicaoBloco: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   medalha: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
   posicao: { color: '#d8d8ed', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase' },
-  badge: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4, gap: 5 },
+  badge: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4, gap: 5 },
   ponto: { width: 7, height: 7, borderRadius: 4 },
   badgeTexto: { fontSize: 10, fontWeight: 'bold' },
-  nome: { color: '#fff', fontSize: 16, fontWeight: 'bold', flexShrink: 1 },
+  nome: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   lucro: { color: '#c7f9cc', fontSize: 17, fontWeight: 'bold' },
   linhaCompacta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 10 },
   categoria: { fontSize: 12, fontWeight: 'bold', flexShrink: 1, textAlign: 'right' },

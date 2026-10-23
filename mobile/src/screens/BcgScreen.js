@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { cardapioApi } from '../services/api';
+import BcgEvolutionModal from '../components/BcgEvolutionModal';
 import { formatarMoeda } from './rankingViewModel';
 import {
   agruparPorQuadrante, pluralizarPratos, validarBcg,
@@ -165,6 +166,11 @@ export default function BcgScreen() {
           itemIndex: 0,
           viewOffset: 8,
         }), 120)}
+      />
+      <BcgEvolutionModal
+        prato={pratoSelecionado && { ...pratoSelecionado, desempenho6Meses: desempenhos[pratoSelecionado.produtoId] || [] }}
+        visible={Boolean(pratoSelecionado)}
+        onClose={() => setPratoSelecionado(null)}
       />
     </View>
   );
