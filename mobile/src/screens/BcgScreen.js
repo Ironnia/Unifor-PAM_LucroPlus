@@ -57,7 +57,7 @@ export default function BcgScreen() {
   const rolarParaQuadrante = (sectionIndex) => {
     secaoDestinoRef.current = sectionIndex;
     listaRef.current?.scrollToLocation({
-      animated: false,
+      animated: true,
       sectionIndex,
       itemIndex: 0,
       viewOffset: 8,
@@ -160,7 +160,7 @@ export default function BcgScreen() {
         stickySectionHeadersEnabled={false}
         refreshControl={<RefreshControl refreshing={atualizando} onRefresh={atualizar} tintColor="#8f89ff" />}
         onScrollToIndexFailed={() => setTimeout(() => listaRef.current?.scrollToLocation({
-          animated: false,
+          animated: true,
           sectionIndex: secaoDestinoRef.current,
           itemIndex: 0,
           viewOffset: 8,
