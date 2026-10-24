@@ -70,6 +70,9 @@ jobs:
             npm install --no-audit --no-fund --package-lock=false
           fi
 
+      - name: Executar testes unitarios do mobile
+        run: npm test
+
       - name: Validar configuracao do Expo
         run: npx expo config --type public > /dev/null
 
@@ -99,6 +102,18 @@ jobs:
         run: |
           test -f database/lucroplus.sql
           grep -q "CREATE TABLE" database/lucroplus.sql
+
+      - name: Validar migrations SQL
+        shell: bash
+        run: |
+          shopt -s nullglob
+          migrations=(database/migrations/*.sql)
+          test "${#migrations[@]}" -gt 0
+
+          for migration in "${migrations[@]}"; do
+            test -s "$migration"
+            grep -Eiq '^[[:space:]]*(CREATE|ALTER|INSERT|UPDATE)([[:space:]]|$)' "$migration"
+          done
 
       - name: Validar sintaxe da colecao Postman
         run: python3 -m json.tool docs/postman/LucroPlus_Sprint2.postman_collection.json > /dev/null
