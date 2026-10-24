@@ -22,7 +22,7 @@ import io.ktor.server.auth.*
 import io.ktor.server.auth.jwt.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import io.ktor.server.plugins.callloging.*
+import io.ktor.server.plugins.callloging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.plugins.statuspages.*
@@ -32,17 +32,28 @@ import kotlinx.serialization.json.Json
 import org.slf4j.event.Level
 
 fun main() {
+
     val serverHost = System.getenv("SERVER_HOST")?.trim()?.takeIf { it.isNotEmpty() } ?: "0.0.0.0"
-    val serverPort = System.getenv("SERVER_PORT")
-        ?.toIntOrNull()
-        ?.takeIf { it in 1..65535 }
-        ?: 8080
+    val serverPort = serverPort(System.getenv("PORT"), System.getenv("SERVER_PORT"))
 
     embeddedServer(Netty, port = serverPort, host = serverHost, module = Application::module)
         .start(wait = true)
 }
 
+internal fun serverPort(port: String?, fallback: String?): Int =
+    (port ?: fallback)?.trim()?.toIntOrNull()?.takeIf { it in 1..65535 } ?: 8080
+
+internal fun Route.healthRoute() {
+    get("/health") {
+        call.respond(HealthResponse(
+            status = "UP",
+            mensagem = "LucroPlus API está operacional"
+        ))
+    }
+}
+
 fun Application.module() {
+
     DatabaseFactory.init()
 
     install(CallLogging) {
@@ -54,6 +65,7 @@ fun Application.module() {
             realm = JwtConfig.REALM
             verifier(JwtConfig.verifier)
             validate { credential ->
+
                 if (credential.payload.audience.contains(JwtConfig.AUDIENCE)) {
                     JWTPrincipal(credential.payload)
                 } else {
@@ -61,6 +73,7 @@ fun Application.module() {
                 }
             }
             challenge { _, _ ->
+
                 call.respond(
                     HttpStatusCode.Unauthorized,
                     ErrorResponse("Token de autenticação inválido ou expirado")
@@ -100,12 +113,15 @@ fun Application.module() {
     }
 
     routing {
+
         get("/") {
             call.respond(HealthResponse(
                 status = "ok",
                 mensagem = "LucroPlus Backend Ktor rodando com sucesso!"
             ))
         }
+
+        healthRoute()
 
         authRoutes()
         bcgRoutes()
