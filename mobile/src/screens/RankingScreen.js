@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   posicaoBloco: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   medalha: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
   posicao: { color: '#d8d8ed', fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase' },
-  badge: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4, gap: 5 },
+  badge: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 16, paddingHorizontal: 8, paddingVertical: 4, gap: 5 },
   ponto: { width: 7, height: 7, borderRadius: 4 },
   badgeTexto: { fontSize: 10, fontWeight: 'bold' },
   nome: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
