@@ -80,7 +80,7 @@ class BcgService(private val restauranteId: Long) : BcgOperacoes {
         }
         if (entradas.isEmpty()) return@dbQuery CalculoBcg.calcular(emptyList(), emptyMap())
 
-        val inicioJanela = fimJanela.withDayOfMonth(1)
+        val inicioJanela = fimJanela.minusDays(30)
         val vendas = (ItensVendaTable innerJoin VendasTable).selectAll().where {
             (VendasTable.restauranteId eq restauranteId) and
                 (VendasTable.dataVenda greaterEq inicioJanela.toKotlinLocalDate()) and

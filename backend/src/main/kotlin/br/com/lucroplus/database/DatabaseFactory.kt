@@ -41,7 +41,7 @@ object DatabaseFactory {
                 connected = true
                 break
             } catch (e: Exception) {
-                log.warn("Tentativa de conexão com senha '$pass' falhou: ${e.message}")
+                log.warn("Tentativa de conexão falhou: ${e.message}")
             }
         }
 

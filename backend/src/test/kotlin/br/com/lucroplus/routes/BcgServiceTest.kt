@@ -171,7 +171,7 @@ class BcgServiceTest {
     }
 
     @Test
-    fun `bcg usa apenas o mes atual e devolve historico da propria loja`() = runBlocking {
+    fun `bcg usa janela movel de 30 dias e devolve historico da propria loja`() = runBlocking {
         transaction(banco) {
             VendasTable.insert {
                 it[id] = 10L; it[restauranteId] = 1L
@@ -181,6 +181,21 @@ class BcgServiceTest {
             ItensVendaTable.insert {
                 it[vendaId] = 10L; it[produtoId] = 1L
                 it[quantidade] = 100; it[precoUnitario] = BigDecimal("10.00")
+            }
+            for ((idVenda, data, quantidade) in listOf(
+                Triple(11L, hoje.minusDays(30), 7),
+                Triple(12L, hoje.minusDays(31), 1000),
+                Triple(13L, hoje.plusDays(1), 10000)
+            )) {
+                VendasTable.insert {
+                    it[id] = idVenda; it[restauranteId] = 1L
+                    it[dataVenda] = data.toKotlinLocalDate()
+                    it[valorTotal] = BigDecimal(quantidade).multiply(BigDecimal.TEN)
+                }
+                ItensVendaTable.insert {
+                    it[vendaId] = idVenda; it[produtoId] = 1L
+                    it[ItensVendaTable.quantidade] = quantidade; it[precoUnitario] = BigDecimal("10.00")
+                }
             }
             BcgHistoricoTable.insert {
                 it[restauranteId] = 1L; it[produtoId] = 1L
@@ -192,12 +207,12 @@ class BcgServiceTest {
             }
         }
         val prato = BcgService(1).listar(hoje).pratos.single()
-        assertEquals(1, prato.vendas30Dias)
+        assertEquals(108, prato.vendas30Dias)
         assertEquals(listOf("2026-09"), prato.historicoBcg.map { it.mesReferencia })
         assertEquals(listOf("CAO"), prato.historicoBcg.map { it.categoria })
         val ranking = RankingService(1).listar(hoje).single()
-        assertEquals(100, ranking.desempenho6Meses.single { it.mes == "2026-09" }.vendasUnidades)
-        assertEquals(900.0, ranking.desempenho6Meses.single { it.mes == "2026-09" }.lucroBrutoTotal)
+        assertEquals(1107, ranking.desempenho6Meses.single { it.mes == "2026-09" }.vendasUnidades)
+        assertEquals(9963.0, ranking.desempenho6Meses.single { it.mes == "2026-09" }.lucroBrutoTotal)
         assertEquals(listOf("2026-09"), ranking.historicoBcg.map { it.mesReferencia })
     }
 
