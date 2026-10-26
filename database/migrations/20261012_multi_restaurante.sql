@@ -99,3 +99,14 @@ DELIMITER ;
 
 CALL migrar_multi_restaurante_s4();
 DROP PROCEDURE IF EXISTS migrar_multi_restaurante_s4;
+
+-- tb_bcg_historico
+CREATE TABLE IF NOT EXISTS tb_bcg_historico (
+    restaurante_id BIGINT NOT NULL,
+    produto_id BIGINT NOT NULL,
+    mes_referencia VARCHAR(7) NOT NULL,
+    categoria VARCHAR(24) NOT NULL,
+    PRIMARY KEY (restaurante_id, produto_id, mes_referencia),
+    CONSTRAINT fk_bcg_restaurante FOREIGN KEY (restaurante_id) REFERENCES tb_restaurante(id),
+    CONSTRAINT fk_bcg_produto FOREIGN KEY (produto_id) REFERENCES tb_produto(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

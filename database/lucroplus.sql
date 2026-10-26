@@ -257,3 +257,20 @@ VALUES (1, 1, 1.0000, 'un'),
        (3, 3, 0.0300, 'kg'),
        (4, 9, 0.5000, 'kg')
 ON DUPLICATE KEY UPDATE quantidade_usada = VALUES(quantidade_usada);
+
+-- tb_restaurante
+CREATE TABLE IF NOT EXISTS tb_restaurante (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(150) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- tb_bcg_historico
+CREATE TABLE IF NOT EXISTS tb_bcg_historico (
+    restaurante_id BIGINT NOT NULL,
+    produto_id BIGINT NOT NULL,
+    mes_referencia VARCHAR(7) NOT NULL,
+    categoria VARCHAR(24) NOT NULL,
+    PRIMARY KEY (restaurante_id, produto_id, mes_referencia),
+    CONSTRAINT fk_bcg_restaurante FOREIGN KEY (restaurante_id) REFERENCES tb_restaurante(id),
+    CONSTRAINT fk_bcg_produto FOREIGN KEY (produto_id) REFERENCES tb_produto(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
