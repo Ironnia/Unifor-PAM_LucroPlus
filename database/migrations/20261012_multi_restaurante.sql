@@ -1,19 +1,17 @@
-
--- 1. Tabela de Restaurantes
 CREATE TABLE IF NOT EXISTS tb_restaurante (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(150) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT IGNORE INTO tb_restaurante (id, nome) VALUES 
+INSERT IGNORE INTO tb_restaurante (id, nome) VALUES
 (1, 'Restaurante Leroliro'),
 (2, 'Restaurante Gula');
 
 DELIMITER $$
-DROP PROCEDURE IF EXISTS migrar_multi_restaurante_s4$$
-CREATE PROCEDURE migrar_multi_restaurante_s4()
+DROP PROCEDURE IF EXISTS migrar_multi_restaurante_restaurante$$
+CREATE PROCEDURE migrar_multi_restaurante_restaurante()
 BEGIN
-    -- tb_usuario
+
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tb_usuario' AND column_name='restaurante_id') THEN
         ALTER TABLE tb_usuario ADD COLUMN restaurante_id BIGINT NULL;
     END IF;
@@ -21,7 +19,6 @@ BEGIN
         ALTER TABLE tb_usuario ADD CONSTRAINT fk_usuario_restaurante FOREIGN KEY (restaurante_id) REFERENCES tb_restaurante(id);
     END IF;
 
-    -- tb_produto
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tb_produto' AND column_name='restaurante_id') THEN
         ALTER TABLE tb_produto ADD COLUMN restaurante_id BIGINT NULL;
     END IF;
@@ -35,7 +32,6 @@ BEGIN
         ALTER TABLE tb_produto ADD UNIQUE KEY uq_produtos_restaurante_externo(restaurante_id, id_externo);
     END IF;
 
-    -- tb_ingrediente
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tb_ingrediente' AND column_name='restaurante_id') THEN
         ALTER TABLE tb_ingrediente ADD COLUMN restaurante_id BIGINT NULL;
     END IF;
@@ -49,7 +45,6 @@ BEGIN
         ALTER TABLE tb_ingrediente ADD UNIQUE KEY uq_ingredientes_restaurante_externo(restaurante_id, id_externo);
     END IF;
 
-    -- tb_lote
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tb_lote' AND column_name='restaurante_id') THEN
         ALTER TABLE tb_lote ADD COLUMN restaurante_id BIGINT NULL;
     END IF;
@@ -63,7 +58,6 @@ BEGIN
         ALTER TABLE tb_lote ADD UNIQUE KEY uq_lotes_restaurante_externo(restaurante_id, id_externo);
     END IF;
 
-    -- tb_venda
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tb_venda' AND column_name='restaurante_id') THEN
         ALTER TABLE tb_venda ADD COLUMN restaurante_id BIGINT NULL;
     END IF;
@@ -77,7 +71,6 @@ BEGIN
         ALTER TABLE tb_venda ADD UNIQUE KEY uq_vendas_restaurante_externo(restaurante_id, id_externo);
     END IF;
 
-    -- tb_promocao
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tb_promocao' AND column_name='restaurante_id') THEN
         ALTER TABLE tb_promocao ADD COLUMN restaurante_id BIGINT NULL;
     END IF;
@@ -85,7 +78,6 @@ BEGIN
         ALTER TABLE tb_promocao ADD CONSTRAINT fk_promocao_restaurante FOREIGN KEY (restaurante_id) REFERENCES tb_restaurante(id);
     END IF;
 
-    -- tb_configuracao_restaurante (configurações independentes por loja)
     CREATE TABLE IF NOT EXISTS tb_configuracao_restaurante (
         restaurante_id BIGINT NOT NULL,
         chave VARCHAR(100) NOT NULL,
@@ -97,16 +89,5 @@ BEGIN
 END$$
 DELIMITER ;
 
-CALL migrar_multi_restaurante_s4();
-DROP PROCEDURE IF EXISTS migrar_multi_restaurante_s4;
-
--- tb_bcg_historico
-CREATE TABLE IF NOT EXISTS tb_bcg_historico (
-    restaurante_id BIGINT NOT NULL,
-    produto_id BIGINT NOT NULL,
-    mes_referencia VARCHAR(7) NOT NULL,
-    categoria VARCHAR(24) NOT NULL,
-    PRIMARY KEY (restaurante_id, produto_id, mes_referencia),
-    CONSTRAINT fk_bcg_restaurante FOREIGN KEY (restaurante_id) REFERENCES tb_restaurante(id),
-    CONSTRAINT fk_bcg_produto FOREIGN KEY (produto_id) REFERENCES tb_produto(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CALL migrar_multi_restaurante_restaurante();
+DROP PROCEDURE IF EXISTS migrar_multi_restaurante_restaurante;

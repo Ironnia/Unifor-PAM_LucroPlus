@@ -1,11 +1,9 @@
--- Migracao aditiva do ciclo de promocoes
-
 DELIMITER $$
-DROP PROCEDURE IF EXISTS migrar_ciclo_promocoes$$
-CREATE PROCEDURE migrar_ciclo_promocoes()
+DROP PROCEDURE IF EXISTS migrar_avisose_promocoes$$
+CREATE PROCEDURE migrar_avisose_promocoes()
 BEGIN
     IF DATABASE() IS NULL THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Selecione o banco antes da migracao';
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Selecione o banco antes da migracao promocoes';
     END IF;
 
     ALTER TABLE tb_promocao MODIFY COLUMN status VARCHAR(24) NOT NULL,
@@ -58,6 +56,6 @@ BEGIN
             FOREIGN KEY (lote_id) REFERENCES tb_lote(id);
     END IF;
 END$$
-CALL migrar_ciclo_promocoes()$$
-DROP PROCEDURE migrar_ciclo_promocoes$$
+CALL migrar_avisose_promocoes()$$
+DROP PROCEDURE migrar_avisose_promocoes$$
 DELIMITER ;

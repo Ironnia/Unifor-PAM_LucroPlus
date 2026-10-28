@@ -1,7 +1,6 @@
--- Adiciona indice unico para evitar duplicacao de alertas
 DELIMITER $$
-DROP PROCEDURE IF EXISTS migrar_alertas_unicos$$
-CREATE PROCEDURE migrar_alertas_unicos()
+DROP PROCEDURE IF EXISTS migrar_alertas_unicos_avisos$$
+CREATE PROCEDURE migrar_alertas_unicos_avisos()
 BEGIN
     DECLARE removidos INT DEFAULT 0;
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
@@ -9,6 +8,10 @@ BEGIN
         ROLLBACK;
         RESIGNAL;
     END;
+    IF DATABASE() IS NULL OR COALESCE(@avisos_backup_verificado,0) <> 1
+        OR COALESCE(@avisos_escritores_parados,0) <> 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Selecione o banco, verifique backup e pare escritores';
+    END IF;
     START TRANSACTION;
     IF EXISTS (SELECT 1 FROM tb_alerta GROUP BY lote_id,tipo HAVING COUNT(*)>1
         AND NOT (lote_id=19 AND tipo='VENCIMENTO' AND COUNT(*)=2 AND MIN(id)=27 AND MAX(id)=28)) THEN
@@ -43,6 +46,6 @@ BEGIN
     END IF;
     SELECT removidos AS alertas_duplicados_removidos;
 END$$
-CALL migrar_alertas_unicos()$$
-DROP PROCEDURE migrar_alertas_unicos$$
+CALL migrar_alertas_unicos_avisos()$$
+DROP PROCEDURE migrar_alertas_unicos_avisos$$
 DELIMITER ;

@@ -1,4 +1,3 @@
--- Tabela para registro de acoes tomadas sobre alertas de lotes
 CREATE TABLE IF NOT EXISTS tb_acao_alerta
 (
     lote_id   BIGINT      NOT NULL,
