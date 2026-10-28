@@ -58,3 +58,15 @@ export function textoPrevia(previsao) {
   if (!previsao?.melhorDia) return `Prato sugerido: ${previsao.pratoNome}. Dia sugerido indisponível.`;
   return `Prato sugerido: ${previsao.pratoNome}. Melhor dia: ${previsao.melhorDia}.`;
 }
+
+export function contagemNavegacao(alertas) {
+  const contagens = contarAlertas(alertas);
+  return { total: contagens.TODOS, criticos: contagens.CRITICO, atencao: contagens.ATENCAO };
+}
+
+export function normalizarContagemNavegacao(valor) {
+  if (typeof valor === 'number') return { total: Math.max(0, valor), criticos: Math.max(0, valor), atencao: 0 };
+  const criticos = Math.max(0, Number(valor?.criticos) || 0);
+  const atencao = Math.max(0, Number(valor?.atencao) || 0);
+  return { total: criticos + atencao, criticos, atencao };
+}
