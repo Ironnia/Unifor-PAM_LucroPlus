@@ -1,6 +1,5 @@
 USE pdv_ficticio;
 
--- Inserindo 30 Produtos
 INSERT INTO pdv_produto (id, nome, categoria, preco_venda, unidade_medida) VALUES
 (1, 'Hambúrguer Clássico', 'Prato Principal', 25.00, 'UN'),
 (2, 'Pizza Margherita', 'Prato Principal', 45.00, 'UN'),
@@ -33,7 +32,6 @@ INSERT INTO pdv_produto (id, nome, categoria, preco_venda, unidade_medida) VALUE
 (29, 'Cebola', 'Ingrediente', 0.00, 'KG'),
 (30, 'Queijo Mussarela', 'Ingrediente', 0.00, 'KG');
 
--- Inserindo 60 Lotes (Compras)
 INSERT INTO pdv_compra (id, produto_id, data_compra, quantidade, preco_custo, data_validade) VALUES
 (1, 1, '2024-03-01', 50.000, 10.00, '2024-03-10'),
 (2, 2, '2024-03-01', 50.000, 18.00, '2024-03-10'),
@@ -96,7 +94,6 @@ INSERT INTO pdv_compra (id, produto_id, data_compra, quantidade, preco_custo, da
 (59, 29, '2024-03-15', 50.000, 0.00, '2025-02-01'),
 (60, 30, '2024-03-15', 50.000, 0.00, '2025-02-01');
 
--- Inserindo 60 Registros de Estoque Atual
 INSERT INTO pdv_estoque (id, produto_id, lote_id, quantidade_atual, data_validade) VALUES
 (1, 1, 1, 37.000, '2024-03-10'),
 (2, 2, 2, 26.000, '2024-03-10'),
@@ -159,7 +156,6 @@ INSERT INTO pdv_estoque (id, produto_id, lote_id, quantidade_atual, data_validad
 (59, 29, 59, 25.000, '2025-02-01'),
 (60, 30, 60, 44.000, '2025-02-01');
 
--- Inserindo 200 Vendas (usando os produtos vendáveis)
 INSERT INTO pdv_venda (id, produto_id, data_venda, quantidade, preco_unitario, valor_total) VALUES
 (1, 6, '2024-05-03 16:50:00', 2.000, 35.00, 70.00),
 (2, 17, '2024-05-03 16:23:00', 1.000, 16.00, 16.00),
