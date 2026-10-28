@@ -1,10 +1,6 @@
--- ============================================================================
--- MOTOR DE DESPERDÍCIO - Queries Base
--- ============================================================================
+USE lucroplus_db;
 
--- 1. Total financeiro de desperdício por ingrediente (Mês Atual)
--- Lotes vencidos cujo mês/ano de vencimento seja o atual (calculando com quantidade_g / 1000 se em kg).
-SELECT 
+SELECT
     i.nome AS ingrediente,
     SUM(l.quantidade_g) AS quantidade_perdida_g,
     i.unidade,
@@ -17,10 +13,7 @@ WHERE l.data_validade < CURDATE()
 GROUP BY i.id, i.nome, i.unidade
 ORDER BY valor_perdido_rs DESC;
 
-
--- 2. Histórico financeiro de desperdício (Últimos 6 Meses)
--- Agrupa os lotes vencidos pelo mês de validade
-SELECT 
+SELECT
     DATE_FORMAT(l.data_validade, '%Y-%m') AS mes_ano,
     SUM(l.quantidade_g * l.custo_unitario) AS valor_perdido_rs
 FROM tb_lote l

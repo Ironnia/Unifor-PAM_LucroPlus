@@ -1,15 +1,6 @@
--- ============================================================================
--- FUNCIONALIDADE 07: Motor de Previsão de Demanda (Dashboard)
--- ============================================================================
-
 USE lucroplus_db;
 
--- 1. Query Principal: Média de vendas por dia da semana (Últimos 28 dias)
--- Pega exatas 4 semanas fechadas (ontem até 28 dias atrás).
--- Como temos 4 ocorrências de cada dia da semana nesse período, a média é a soma dividida por 4.
--- DAYOFWEEK(data): 1 = Domingo, 2 = Segunda, ..., 7 = Sábado.
-
-SELECT 
+SELECT
     p.id AS produto_id,
     p.nome AS produto_nome,
     DAYOFWEEK(v.data_venda) AS dia_semana,
