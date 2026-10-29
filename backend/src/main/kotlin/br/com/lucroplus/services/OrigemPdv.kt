@@ -51,8 +51,8 @@ internal object OrigemPdv {
         val propriedades = Properties().apply {
             setProperty("user", config.username.orEmpty()); setProperty("password", config.password.orEmpty())
             setProperty("connectionTimeZone", "UTC"); setProperty("forceConnectionTimeZoneToSession", "true")
-            setProperty("preserveInstants", "true"); setProperty("connectTimeout", "5000")
-            setProperty("socketTimeout", "5000")
+            setProperty("preserveInstants", "true"); setProperty("connectTimeout", "3000")
+            setProperty("socketTimeout", "10000")
         }
         return DriverManager.getConnection(url, propriedades).use { conexao ->
 
