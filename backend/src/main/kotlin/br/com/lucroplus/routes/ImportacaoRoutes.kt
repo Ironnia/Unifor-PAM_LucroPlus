@@ -1,20 +1,21 @@
-    package br.com.lucroplus.routes
+package br.com.lucroplus.routes
 
-    import br.com.lucroplus.security.restauranteAutenticado
-    import io.ktor.server.auth.*
-    import br.com.lucroplus.models.ErrorResponse
-    import br.com.lucroplus.models.ImportacaoResponse
-    import br.com.lucroplus.services.ImportacaoService
-    import io.ktor.http.*
-    import io.ktor.http.content.*
-    import io.ktor.server.application.*
-    import io.ktor.server.request.*
-    import io.ktor.server.response.*
-    import io.ktor.server.routing.*
+import br.com.lucroplus.security.restauranteAutenticado
+import br.com.lucroplus.models.ErrorResponse
+import br.com.lucroplus.models.ImportacaoResponse
+import br.com.lucroplus.services.ImportacaoService
+import io.ktor.http.*
+import io.ktor.server.auth.*
+import io.ktor.http.content.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 
-    fun Route.importacaoRoutes() {
-        authenticate("auth-jwt") {
+fun Route.importacaoRoutes() {
+    authenticate("auth-jwt") {
         route("/importacao") {
+
             post("/produtos") {
                 val restauranteId = call.restauranteAutenticado() ?: return@post
                 val csvText = call.extrairConteudoCsv()
@@ -67,6 +68,11 @@
                 val restauranteId = call.restauranteAutenticado() ?: return@post
                 val resultado = ImportacaoService(restauranteId).sincronizarPdv()
                 call.respond(HttpStatusCode.OK, resultado)
+            }
+
+            get("/pdv/status") {
+                val restauranteId = call.restauranteAutenticado() ?: return@get
+                call.respond(ImportacaoService(restauranteId).statusPdv())
             }
         }
     }
