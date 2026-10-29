@@ -22,7 +22,7 @@ object DistribuicaoFifo {
         require(lotes.all { it.saldoG >= 0 } && lotes.map { it.id }.distinct().size == lotes.size)
         var falta = quantidadeG
         val baixas = mutableListOf<BaixaFifo>()
-        for (lote in lotes.sortedWith(compareBy<LoteFifo> { it.entradaEm })) {
+        for (lote in lotes.sortedWith(compareBy<LoteFifo> { it.entradaEm }.thenBy { it.id })) {
             val retirada = minOf(falta, lote.saldoG)
             if (retirada > 0) baixas += BaixaFifo(lote.id, retirada)
             falta -= retirada
