@@ -9,75 +9,73 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.slf4j.LoggerFactory
 import org.mindrot.jbcrypt.BCrypt
+import org.slf4j.LoggerFactory
 
 object DatabaseFactory {
     private val log = LoggerFactory.getLogger(DatabaseFactory::class.java)
 
     fun init() {
-        val jdbcUrl = System.getenv("DB_URL") 
+
+        val jdbcUrl = System.getenv("DB_URL")
             ?: "jdbc:mysql://localhost:3306/lucroplus_db?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true"
         val user = System.getenv("DB_USER") ?: "root"
-        val primaryPass = System.getenv("DB_PASSWORD") ?: "123"
-        val fallbackPass = if (primaryPass == "123") "root" else "123"
+        val password = System.getenv("DB_PASSWORD")
+            ?.takeIf { it.isNotBlank() }
+            ?: error("DB_PASSWORD não configurada. Defina a variável de ambiente antes de iniciar o backend.")
 
-        var connected = false
-        for (pass in listOf(primaryPass, fallbackPass)) {
-            try {
-                val config = HikariConfig().apply {
-                    this.jdbcUrl = jdbcUrl
-                    this.driverClassName = "com.mysql.cj.jdbc.Driver"
-                    this.username = user
-                    this.password = pass
-                    this.maximumPoolSize = 10
-                    this.isAutoCommit = false
-                    this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
-                    this.validate()
-                }
-                val dataSource = HikariDataSource(config)
-                Database.connect(dataSource)
-                log.info("Conexão MySQL inicializada com sucesso em: $jdbcUrl")
-                connected = true
-                break
-            } catch (e: Exception) {
-                log.warn("Tentativa de conexão falhou: ${e.message}")
-            }
+        val config = HikariConfig().apply {
+            this.jdbcUrl = jdbcUrl
+            this.driverClassName = "com.mysql.cj.jdbc.Driver"
+            this.username = user
+            this.password = password
+
+            this.addDataSourceProperty("connectionTimeZone", "UTC")
+            this.addDataSourceProperty("forceConnectionTimeZoneToSession", "true")
+            this.addDataSourceProperty("preserveInstants", "true")
+            this.maximumPoolSize = 10
+            this.isAutoCommit = false
+            this.transactionIsolation = "TRANSACTION_REPEATABLE_READ"
+            this.validate()
         }
+        val dataSource = HikariDataSource(config)
+        Database.connect(dataSource)
+        log.info("Conexão MySQL inicializada com sucesso em: $jdbcUrl")
 
-        if (connected) {
-            try {
-                transaction {
-                    SchemaUtils.createMissingTablesAndColumns(
-                        RestaurantesTable,
-                        UsuariosTable,
-                        ProdutosTable,
-                        IngredientesTable,
-                        LotesTable,
-                        FichasTecnicasTable,
-                        VendasTable,
-                        ItensVendaTable,
-                        PromocoesTable,
-                        AlertasTable,
-                        AcoesAlertaTable,
-                        ConfiguracoesTable,
-                        ConfiguracoesRestauranteTable,
-                        BcgHistoricoTable
-                    )
+        try {
+            transaction {
 
-                    if (UsuariosTable.selectAll().count() == 0L) {
-                        UsuariosTable.insert {
-                            it[nome] = "Gerente Teste"
-                            it[email] = "gerente@lucroplus.com"
-                            it[senhaHash] = BCrypt.hashpw("gerente123", BCrypt.gensalt(12))
-                            it[tipo] = "GERENTE"
-                            it[ativo] = true
-                        }
+                SchemaUtils.createMissingTablesAndColumns(
+                    RestaurantesTable,
+                    UsuariosTable,
+                    ProdutosTable,
+                    IngredientesTable,
+                    LotesTable,
+                    FichasTecnicasTable,
+                    VendasTable,
+                    ItensVendaTable,
+                    PromocoesTable,
+                    AlertasTable,
+                    AcoesAlertaTable,
+                    ConfiguracoesTable,
+                    ConfiguracoesRestauranteTable,
+                    MovimentosEstoqueTable,
+                    SyncPdvHistoricoTable,
+                    BcgHistoricoTable
+                )
+
+                if (UsuariosTable.selectAll().count() == 0L) {
+                    UsuariosTable.insert {
+                        it[nome] = "Gerente Teste"
+                        it[email] = "gerente@lucroplus.com"
+                        it[senhaHash] = BCrypt.hashpw("gerente123", BCrypt.gensalt(12))
+                        it[tipo] = "GERENTE"
+                        it[ativo] = true
                     }
                 }
-            } catch (e: Exception) {
-                log.warn("Erro ao verificar schema MySQL: ${e.message}")
             }
+        } catch (e: Exception) {
+            log.warn("Erro ao verificar schema MySQL: ${e.message}")
         }
     }
 
