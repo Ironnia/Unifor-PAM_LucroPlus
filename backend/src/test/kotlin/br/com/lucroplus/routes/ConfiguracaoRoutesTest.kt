@@ -36,6 +36,7 @@ class ConfiguracaoRoutesTest {
 
     private fun Application.configurarModuloDeTeste() {
         bancoContaTeste(admin = true)
+
         install(Authentication) {
             jwt("auth-jwt") {
                 realm = "LucroPlus Test"
@@ -62,7 +63,6 @@ class ConfiguracaoRoutesTest {
 
     private fun HttpRequestBuilder.autorizar() {
         header(HttpHeaders.Authorization, "Bearer $token")
-        parameter("restauranteId", 1)
         contentType(ContentType.Application.Json)
     }
 
@@ -70,7 +70,7 @@ class ConfiguracaoRoutesTest {
     fun `deve bloquear teste de conexao sem token`() = testApplication {
         application { configurarModuloDeTeste() }
 
-        val response = client.post("/configuracoes/pdv/testar-conexao") {
+        val response = client.post("/configuracoes/pdv/testar-conexao?restauranteId=1") {
             contentType(ContentType.Application.Json)
             setBody("""{"host":"simulado","usuario":"mock","senha":""}""")
         }
@@ -82,7 +82,7 @@ class ConfiguracaoRoutesTest {
     fun `deve retornar sucesso no modo simulado`() = testApplication {
         application { configurarModuloDeTeste() }
 
-        val response = client.post("/configuracoes/pdv/testar-conexao") {
+        val response = client.post("/configuracoes/pdv/testar-conexao?restauranteId=1") {
             autorizar()
             setBody("""{"host":"simulado","porta":3306,"banco":"pdv","usuario":"mock","senha":""}""")
         }
@@ -97,7 +97,7 @@ class ConfiguracaoRoutesTest {
     fun `deve retornar bad request para porta invalida`() = testApplication {
         application { configurarModuloDeTeste() }
 
-        val response = client.post("/configuracoes/pdv/testar-conexao") {
+        val response = client.post("/configuracoes/pdv/testar-conexao?restauranteId=1") {
             autorizar()
             setBody("""{"host":"localhost","porta":70000,"usuario":"teste","senha":""}""")
         }
@@ -110,7 +110,7 @@ class ConfiguracaoRoutesTest {
     fun `deve retornar bad request quando a conexao falhar`() = testApplication {
         application { configurarModuloDeTeste() }
 
-        val response = client.post("/configuracoes/pdv/testar-conexao") {
+        val response = client.post("/configuracoes/pdv/testar-conexao?restauranteId=1") {
             autorizar()
             setBody("""{"host":"127.0.0.1","porta":1,"banco":"inexistente","usuario":"teste","senha":"invalida"}""")
         }
@@ -125,7 +125,7 @@ class ConfiguracaoRoutesTest {
     fun `deve retornar bad request para json malformado`() = testApplication {
         application { configurarModuloDeTeste() }
 
-        val response = client.post("/configuracoes/pdv/testar-conexao") {
+        val response = client.post("/configuracoes/pdv/testar-conexao?restauranteId=1") {
             autorizar()
             setBody("{")
         }
