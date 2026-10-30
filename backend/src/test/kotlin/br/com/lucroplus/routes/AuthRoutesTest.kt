@@ -22,6 +22,7 @@ import java.util.UUID
 import kotlin.test.*
 
 class AuthRoutesTest {
+
     private fun banco(): Database {
         val db = Database.connect("jdbc:h2:mem:auth_${UUID.randomUUID()};MODE=MySQL;DB_CLOSE_DELAY=-1", "org.h2.Driver")
         TransactionManager.defaultDatabase = db

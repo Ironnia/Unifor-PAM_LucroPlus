@@ -36,7 +36,7 @@ class IsolamentoRestauranteTest {
     private val hoje get() = LocalDate.now()
 
     @BeforeTest fun preparar() {
-        nomeBanco = "e1b_test_" + UUID.randomUUID().toString().replace("-", "")
+        nomeBanco = "isolamento_test_" + UUID.randomUUID().toString().replace("-", "")
         banco = if (mysql) {
             DriverManager.getConnection(url, System.getenv("DB_USER"), System.getenv("DB_PASSWORD")).use {
                 it.createStatement().use { st -> st.executeUpdate("CREATE DATABASE $nomeBanco") }
@@ -91,7 +91,7 @@ class IsolamentoRestauranteTest {
 
     @AfterTest fun limpar() {
         if (mysql) {
-            check(nomeBanco.matches(Regex("e1b_test_[a-f0-9]{32}")))
+            check(nomeBanco.matches(Regex("isolamento_test_[a-f0-9]{32}")))
             DriverManager.getConnection(url, System.getenv("DB_USER"), System.getenv("DB_PASSWORD")).use {
                 it.createStatement().use { st -> st.executeUpdate("DROP DATABASE $nomeBanco") }
             }

@@ -1,9 +1,5 @@
 package br.com.lucroplus.routes
 
-import br.com.lucroplus.database.RestaurantesTable
-import br.com.lucroplus.database.UsuariosTable
-import br.com.lucroplus.routes.prepararContaTeste
-
 import br.com.lucroplus.database.*
 import br.com.lucroplus.models.AlertaDto
 import br.com.lucroplus.services.AlertaService
@@ -31,14 +27,13 @@ import java.time.LocalDate
 import java.util.UUID
 import kotlin.test.*
 
-// teste com banco temporario caso variavel esteja configurada
 class AlertaConcorrenciaTest {
     private val nome = "test_alertas_" + UUID.randomUUID().toString().replace("-", "")
     private val mysql = System.getenv("LUCROPLUS_ALERTAS_MYSQL") == "true"
     private val url = "jdbc:mysql://127.0.0.1:3306/?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
     private lateinit var banco: Database
     private val algorithm = Algorithm.HMAC256("chave-ficticia-exclusiva-deste-teste")
-    private val token = JWT.create().withAudience("teste").withIssuer("teste").withClaim("id", 1L).sign(algorithm)
+    private val token = JWT.create().withClaim("id", 1L).withAudience("teste").withIssuer("teste").sign(algorithm)
 
     @BeforeTest
     fun preparar() {
@@ -51,16 +46,16 @@ class AlertaConcorrenciaTest {
         else Database.connect("jdbc:h2:mem:$nome;MODE=MySQL;DB_CLOSE_DELAY=-1", "org.h2.Driver", databaseConfig = config)
         TransactionManager.defaultDatabase = banco
         transaction(banco) {
-            SchemaUtils.create(UsuariosTable, RestaurantesTable, IngredientesTable, ProdutosTable, LotesTable, AlertasTable, AcoesAlertaTable, PromocoesTable)
-            prepararContaTeste()
+            SchemaUtils.create(br.com.lucroplus.database.RestaurantesTable, br.com.lucroplus.database.UsuariosTable, IngredientesTable, ProdutosTable, LotesTable, AlertasTable, AcoesAlertaTable, PromocoesTable)
+            br.com.lucroplus.routes.prepararContaTeste()
             IngredientesTable.insert {
-                it[IngredientesTable.restauranteId] = 1; it[id] = 1; it[nome] = "Ingrediente fictício"; it[unidade] = "g" }
+                it[IngredientesTable.restauranteId] = 1L; it[id] = 1; it[nome] = "Ingrediente fictício"; it[unidade] = "g" }
             for (idLote in 1L..3L) LotesTable.insert {
-                it[LotesTable.restauranteId] = 1
+                it[LotesTable.restauranteId] = 1L
                 it[id] = idLote; it[ingredienteId] = 1; it[quantidadeG] = 1000
                 it[custoUnitario] = java.math.BigDecimal("0.01")
                 it[dataEntrada] = LocalDate.now().toKotlinLocalDate()
-                it[dataValidade] = LocalDate.now().plusDays(idLote + 1).toKotlinLocalDate()
+                it[dataValidade] = LocalDate.now().plusDays(idLote).toKotlinLocalDate()
             }
         }
     }
