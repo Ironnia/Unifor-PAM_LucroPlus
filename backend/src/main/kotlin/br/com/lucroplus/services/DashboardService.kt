@@ -64,7 +64,7 @@ class DashboardService(
 
         val impactoAtual = obterImpacto(periodos.atual, agora)
         val impactoAnterior = periodos.anterior?.let { obterImpacto(it, fimComparativo!!) }
-        val inicioSerie = hoje.minusDays(7)
+        val inicioSerie = hoje.minusDays(6)
         val serie = (0L..6L).map { deslocamento ->
             val data = inicioSerie.plusDays(deslocamento)
             val vendasDoDia = vendasDaLoja.filter {
