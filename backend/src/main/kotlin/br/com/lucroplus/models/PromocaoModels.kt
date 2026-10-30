@@ -14,7 +14,6 @@ data class AtivarPromocaoRequest(val descontoPct: Int, val dataInicio: String, v
 @Serializable
 data class ConfirmarPromocaoRequest(val loteEscoado: Boolean)
 
-// valores monetarios como string decimal para evitar perda de precisao
 @Serializable
 data class PromocaoDto(
     val id: Long,
@@ -31,8 +30,27 @@ data class PromocaoDto(
     val quantidadeReferenciaG: Int?,
     val valorEmRisco: String?,
     val valorSalvo: String,
-    val aguardaConfirmacao: Boolean
+    val aguardaConfirmacao: Boolean,
+    val ativadaEm: String? = null,
+    val inicioEfetivo: String? = null,
+    val fimExclusivo: String? = null,
+    val custoReferenciaPorGrama: String? = null,
+    val quantidadeConsumidaG: Int? = null,
+    val quantidadeDescartadaG: Int? = null,
+    val valorPerdido: String? = null,
+    val confirmadaEm: String? = null,
+    val confirmadaPor: Long? = null,
+    val ingredienteNome: String? = null,
+    val numeroLote: String? = null,
+    val prazoLimiteVenda: String? = null,
+    val criticidade: String? = null
 )
 
 @Serializable
-data class ResumoPromocoesDto(val emAndamento: Long, val prejuizoEvitado: String)
+data class ResumoPromocoesDto(
+    val emAndamento: Long,
+    val prejuizoEvitado: String,
+    val valorSalvoMes: Double = 0.0,
+    val valorEmRiscoAtivo: Double = 0.0,
+    val pendentes: Int = 0
+)

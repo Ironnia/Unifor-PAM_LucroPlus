@@ -1,14 +1,13 @@
 package br.com.lucroplus.services
 
 import br.com.lucroplus.database.DatabaseFactory.dbQuery
+import br.com.lucroplus.database.IngredientesTable
 import br.com.lucroplus.database.FichasTecnicasTable
 import br.com.lucroplus.database.LotesTable
 import br.com.lucroplus.database.ProdutosTable
 import br.com.lucroplus.models.ProdutoDto
 import br.com.lucroplus.models.RentabilidadeDto
-import org.jetbrains.exposed.sql.Avg
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.*
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -31,11 +30,10 @@ class ProdutoService(private val restauranteId: Long) {
     }
 
     suspend fun obterRentabilidadeProdutos(): List<RentabilidadeDto> = dbQuery {
-        // Custo médio ponderado de cada ingrediente pelos lotes ativos
+
         val avgColumn = Avg(LotesTable.custoUnitario, 4)
         val custoMedioPorIngrediente = LotesTable
-            .select(LotesTable.ingredienteId, avgColumn)
-            .where { LotesTable.restauranteId eq restauranteId }
+            .select(LotesTable.ingredienteId, avgColumn).where { (LotesTable.restauranteId eq restauranteId) }
             .groupBy(LotesTable.ingredienteId)
             .associate {
                 val ingId = it[LotesTable.ingredienteId]
@@ -43,8 +41,8 @@ class ProdutoService(private val restauranteId: Long) {
                 ingId to avgCost
             }
 
-        val fichasPorProduto = (FichasTecnicasTable innerJoin ProdutosTable)
-            .selectAll().where { ProdutosTable.restauranteId eq restauranteId }
+        val fichasPorProduto = (FichasTecnicasTable innerJoin ProdutosTable innerJoin IngredientesTable)
+            .selectAll().where { (ProdutosTable.restauranteId eq restauranteId) and (IngredientesTable.restauranteId eq restauranteId) }
             .groupBy({ it[FichasTecnicasTable.produtoId] }) {
                 it[FichasTecnicasTable.ingredienteId] to it[FichasTecnicasTable.quantidadeUsada].toDouble()
             }
@@ -57,7 +55,6 @@ class ProdutoService(private val restauranteId: Long) {
                 val produtoNome = row[ProdutosTable.nome]
                 val precoVenda = row[ProdutosTable.preco].toDouble()
 
-                // CMV: Soma do custo dos ingredientes ponderados pela ficha técnica
                 val ingredientesDaReceita = fichasPorProduto[produtoId] ?: emptyList()
                 var custoProducao = 0.0
                 for ((ingredienteId, quantidadeUsada) in ingredientesDaReceita) {

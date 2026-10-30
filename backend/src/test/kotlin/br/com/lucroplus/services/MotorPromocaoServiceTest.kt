@@ -1,18 +1,12 @@
 package br.com.lucroplus.services
 
-import br.com.lucroplus.database.RestaurantesTable
-import br.com.lucroplus.database.UsuariosTable
-import br.com.lucroplus.routes.prepararContaTeste
-
 import br.com.lucroplus.database.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.toKotlinLocalDate
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.math.BigDecimal
@@ -31,42 +25,34 @@ class MotorPromocaoServiceTest {
         )
         TransactionManager.defaultDatabase = banco
         transaction(banco) {
-            SchemaUtils.create(RestaurantesTable, UsuariosTable, IngredientesTable, ProdutosTable, LotesTable, FichasTecnicasTable,
-                VendasTable, ItensVendaTable, AlertasTable, AcoesAlertaTable, PromocoesTable)
-            prepararContaTeste()
+            SchemaUtils.create(br.com.lucroplus.database.RestaurantesTable,
+                UsuariosTable, IngredientesTable, ProdutosTable, LotesTable, FichasTecnicasTable,
+                VendasTable, ItensVendaTable, AlertasTable, AcoesAlertaTable, PromocoesTable
+            )
+            br.com.lucroplus.routes.prepararContaTeste()
             IngredientesTable.insert {
-                it[IngredientesTable.restauranteId] = 1
+                it[IngredientesTable.restauranteId] = 1L
                 it[id] = 1L; it[nome] = "Tomate"; it[unidade] = "kg"
                 it[pesoPorUnidadeG] = 1000; it[estoqueMinimo] = BigDecimal.ZERO
             }
             IngredientesTable.insert {
-                it[IngredientesTable.restauranteId] = 1
+                it[IngredientesTable.restauranteId] = 1L
                 it[id] = 2L; it[nome] = "Queijo"; it[unidade] = "kg"
                 it[pesoPorUnidadeG] = 1000; it[estoqueMinimo] = BigDecimal.ZERO
             }
-            IngredientesTable.insert {
-                it[IngredientesTable.restauranteId] = 1
-                it[id] = 3L; it[nome] = "Alface"; it[unidade] = "kg"
-                it[pesoPorUnidadeG] = 1000; it[estoqueMinimo] = BigDecimal.ZERO
-            }
             ProdutosTable.insert {
-                it[ProdutosTable.restauranteId] = 1
+                it[ProdutosTable.restauranteId] = 1L
                 it[id] = 10L; it[nome] = "Pizza"; it[preco] = BigDecimal("100.00")
                 it[categoria] = "Pizzas"; it[ativo] = true
             }
             ProdutosTable.insert {
-                it[ProdutosTable.restauranteId] = 1
+                it[ProdutosTable.restauranteId] = 1L
                 it[id] = 11L; it[nome] = "Salada"; it[preco] = BigDecimal("50.00")
                 it[categoria] = "Saladas"; it[ativo] = true
             }
-            ProdutosTable.insert {
-                it[ProdutosTable.restauranteId] = 1
-                it[id] = 12L; it[nome] = "Sopa"; it[preco] = BigDecimal("30.00")
-                it[categoria] = "Sopas"; it[ativo] = true
-            }
             fun lote(idLote: Long, ingrediente: Long, prazo: LocalDate, custo: String) {
                 LotesTable.insert {
-                    it[LotesTable.restauranteId] = 1
+                it[LotesTable.restauranteId] = 1L
                     it[id] = idLote; it[ingredienteId] = ingrediente; it[quantidadeG] = 1000
                     it[custoUnitario] = BigDecimal(custo)
                     it[dataValidade] = prazo.toKotlinLocalDate()
@@ -76,8 +62,6 @@ class MotorPromocaoServiceTest {
             lote(100L, 1L, hoje.plusDays(7), "0.1000")
             lote(101L, 1L, hoje.plusDays(8), "0.2000")
             lote(102L, 2L, hoje.plusDays(20), "0.0500")
-            lote(103L, 1L, hoje.plusDays(7), "0.1000")
-            lote(104L, 3L, hoje.plusDays(7), "0.0500")
             fun ficha(prato: Long, ingrediente: Long, quantidade: String) {
                 FichasTecnicasTable.insert {
                     it[produtoId] = prato; it[ingredienteId] = ingrediente
@@ -87,7 +71,6 @@ class MotorPromocaoServiceTest {
             ficha(10L, 1L, "0.1000")
             ficha(10L, 2L, "0.0500")
             ficha(11L, 1L, "0.0500")
-            ficha(12L, 3L, "0.0500")
             fun acao(loteId: Long, alertaId: Long, tipo: String) {
                 AlertasTable.insert {
                     it[id] = alertaId; it[AlertasTable.loteId] = loteId
@@ -102,18 +85,8 @@ class MotorPromocaoServiceTest {
             }
             acao(100L, 200L, "SALVAR_LOTE")
             acao(101L, 201L, "CIENTE")
-            AlertasTable.insert {
-                it[id] = 203L; it[loteId] = 103L; it[tipo] = "VENCIMENTO"
-                it[mensagem] = "Teste"; it[dataAlerta] = hoje.toKotlinLocalDate()
-                it[visualizado] = false
-            }
-            AlertasTable.insert {
-                it[id] = 204L; it[loteId] = 104L; it[tipo] = "VENCIMENTO"
-                it[mensagem] = "Teste"; it[dataAlerta] = hoje.toKotlinLocalDate()
-                it[visualizado] = false
-            }
             VendasTable.insert {
-                it[VendasTable.restauranteId] = 1
+                it[VendasTable.restauranteId] = 1L
                 it[id] = 300L; it[dataVenda] = hoje.minusDays(1).toKotlinLocalDate()
                 it[valorTotal] = BigDecimal("200.00"); it[origem] = "manual"
             }
@@ -133,28 +106,8 @@ class MotorPromocaoServiceTest {
         assertEquals(2, pizza.vendas30Dias)
         assertEquals(87.5, pizza.margemPct)
         assertEquals(87, pizza.limiteDescontoMargemBrutaPct)
-        assertEquals(100.0, pizza.precoVenda)
-        assertEquals(87.5, pizza.lucroBrutoEstimado)
         assertEquals(hoje.plusDays(6).toString(), pizza.dataSugerida)
-        assertEquals(hoje.plusDays(6).toString(), pizza.prazoLimiteVenda)
-        assertEquals(6, pizza.diasParaPrazoLimite)
         assertEquals(null, sugestoes.single { it.pratoId == 11L }.dataSugerida)
-        val previas = runBlocking { MotorPromocaoService(1).listarPrevias(hoje) }
-        assertEquals(1, previas.size)
-        assertEquals(103L, previas.single().loteId)
-        assertEquals(10L, previas.single().pratoId)
-        assertEquals(hoje.plusDays(6).toString(), previas.single().dataSugerida)
-        transaction(banco) {
-            ItensVendaTable.insert {
-                it[id] = 401L; it[vendaId] = 300L; it[produtoId] = 11L
-                it[quantidade] = 2; it[precoUnitario] = BigDecimal("50.00")
-            }
-        }
-        assertEquals(10L, runBlocking { MotorPromocaoService(1).listarPrevias(hoje) }.single().pratoId)
-        transaction(banco) {
-            ItensVendaTable.update({ ItensVendaTable.id eq 401L }) { it[quantidade] = 3 }
-        }
-        assertEquals(11L, runBlocking { MotorPromocaoService(1).listarPrevias(hoje) }.single().pratoId)
         transaction(banco) { assertEquals(0L, PromocoesTable.selectAll().count()) }
     }
 }

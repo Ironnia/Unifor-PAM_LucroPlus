@@ -162,7 +162,6 @@ internal object CalculoBcg {
             val volumeAlto = BigDecimal(item.volume) >= mediaVolume
             val margemAlta = item.margemPct >= mediaMargem
             val categoria = when {
-                item.volume == 0 -> CAO
                 volumeAlto && margemAlta -> ESTRELA
                 volumeAlto -> BURRO_DE_CARGA
                 margemAlta -> QUEBRA_CABECA

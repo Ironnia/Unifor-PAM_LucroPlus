@@ -15,18 +15,19 @@ data class SugestaoPromocaoDto(
     val melhorDiaSemana: String?,
     val dataSugerida: String?,
     val vendas30Dias: Int,
-    val precoVenda: Double?,
-    val lucroBrutoEstimado: Double?,
     val margemPct: Double?,
     val limiteDescontoMargemBrutaPct: Int?,
-    val observacao: String?
+    val observacao: String?,
+    val avisos: List<AvisoSugestaoDto> = emptyList(),
+    val precoVenda: Double? = null,
+    val lucroBrutoEstimado: Double? = null
 )
 
 @Serializable
-data class PreviaPromocaoDto(
-    val loteId: Long,
-    val pratoId: Long,
-    val pratoNome: String,
-    val melhorDia: String?,
-    val dataSugerida: String?
+data class AvisoSugestaoDto(
+    val campo: String,
+    val codigo: String,
+    val mensagem: String,
+    val ingredienteId: Long? = null,
+    val ingredienteNome: String? = null
 )

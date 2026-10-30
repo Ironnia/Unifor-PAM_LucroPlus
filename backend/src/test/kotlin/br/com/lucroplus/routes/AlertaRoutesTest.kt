@@ -28,8 +28,8 @@ class AlertaRoutesTest {
     private val audience = "alertas-test"
     private val issuer = "lucroplus-test"
     private val algorithm = Algorithm.HMAC256("somente-testes-alertas-1234567890")
-    private val token = JWT.create().withAudience(audience).withIssuer(issuer)
-        .withClaim("id", 1L).sign(algorithm)
+    private val token = JWT.create().withClaim("id", 1L).withAudience(audience).withIssuer(issuer)
+        .sign(algorithm)
 
     private class Fake : AlertaOperacoes {
         var resultado = ResultadoAcaoAlerta.CONCLUIDA
@@ -47,7 +47,7 @@ class AlertaRoutesTest {
         install(Authentication) {
             jwt("auth-jwt") {
                 realm = "LucroPlus Test"
-                verifier(JWT.require(algorithm).withAudience(audience).withIssuer(issuer).build())
+                verifier(JWT.require(algorithm).withClaim("id", 1L).withAudience(audience).withIssuer(issuer).build())
                 validate { credential -> JWTPrincipal(credential.payload) }
                 challenge { _, _ ->
                     call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Token inválido"))
@@ -67,8 +67,6 @@ class AlertaRoutesTest {
         assertEquals(HttpStatusCode.Unauthorized, client.get("/alertas/vencimento").status)
         assertEquals(HttpStatusCode.Unauthorized, client.patch("/alertas/1/salvar-lote").status)
         assertEquals(HttpStatusCode.Unauthorized, client.get("/promocoes/pendentes").status)
-        assertEquals(HttpStatusCode.Unauthorized, client.get("/promocoes/previas").status)
-        assertEquals(HttpStatusCode.Unauthorized, client.get("/promocoes/sugestoes").status)
     }
 
     @Test

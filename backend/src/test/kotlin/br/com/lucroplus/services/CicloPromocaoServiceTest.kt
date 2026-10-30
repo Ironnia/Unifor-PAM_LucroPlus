@@ -13,6 +13,21 @@ class CicloPromocaoServiceTest {
     private fun PromocaoFixture.ativacao() = AtivarPromocaoRequest(20, hoje.toString(), hoje.toString())
 
     @Test
+    fun `cancelamento devolve sugestao com preco lucro margem e limite`() = runBlocking {
+        val f = PromocaoFixture()
+        val criada = f.servico.criar(CriarPromocaoRequest(1, 1))
+        f.servico.ativar(criada.id, f.ativacao())
+        assertFalse(MotorPromocaoService(1).listarSugestoes(f.hoje).any { it.loteId == 1L && it.pratoId == 1L })
+        f.servico.cancelar(criada.id)
+        val sugestao = MotorPromocaoService(1).listarSugestoes(f.hoje)
+            .single { it.loteId == 1L && it.pratoId == 1L }
+        assertEquals(20.0, sugestao.precoVenda)
+        assertEquals(18.77, sugestao.lucroBrutoEstimado)
+        assertNotNull(sugestao.margemPct)
+        assertNotNull(sugestao.limiteDescontoMargemBrutaPct)
+    }
+
+    @Test
     fun `sucesso registra snapshot somente apos periodo e nao duplica valor`() = runBlocking {
         val f = PromocaoFixture()
         val p = f.servico.criar(CriarPromocaoRequest(1, 1))
@@ -20,8 +35,10 @@ class CicloPromocaoServiceTest {
         assertNull(p.descontoPct)
         assertEquals(p.id, f.servico.criar(CriarPromocaoRequest(1, 1)).id)
         assertEquals("0.00", f.servico.resumo().prejuizoEvitado)
+        assertEquals(4, f.servico.resumo().pendentes)
         val ativa = f.servico.ativar(p.id, f.ativacao())
         assertEquals("15.18", ativa.valorEmRisco)
+        assertEquals(15.18, f.servico.resumo().valorEmRiscoAtivo)
         assertEquals("0.00", ativa.valorSalvo)
         assertEquals(ativa, f.servico.ativar(p.id, f.ativacao()))
         assertEquals(1, f.servico.listar(StatusPromocao.EM_ANDAMENTO).size)
@@ -38,6 +55,8 @@ class CicloPromocaoServiceTest {
         assertEquals("15.18", concluida.valorSalvo)
         assertEquals(concluida, f.servico.confirmar(p.id, ConfirmarPromocaoRequest(true)))
         assertEquals("15.18", f.servico.resumo().prejuizoEvitado)
+        assertEquals(15.18, f.servico.resumo().valorSalvoMes)
+        assertEquals(0.0, f.servico.resumo().valorEmRiscoAtivo)
         assertEquals(0L, f.servico.resumo().emAndamento)
         assertEquals(409, assertFailsWith<ErroPromocao> {
             f.servico.confirmar(p.id, ConfirmarPromocaoRequest(false))
@@ -60,17 +79,18 @@ class CicloPromocaoServiceTest {
     }
 
     @Test
-    fun `recusa encerra pendencia sem recomendar outro prato`() = runBlocking {
+    fun `recusa permite outro prato mas nao reabre o par recusado`() = runBlocking {
         val f = PromocaoFixture()
         val p = f.servico.criar(CriarPromocaoRequest(1, 1))
-        assertFalse(MotorPromocaoService(1).listarSugestoes(f.hoje).any { it.loteId == 1L })
+        assertTrue(MotorPromocaoService(1).listarSugestoes(f.hoje).any { it.loteId == 1L && it.pratoId == 1L })
         val recusada = f.servico.recusar(p.id)
         assertEquals(recusada, f.servico.recusar(p.id))
-        assertFalse(MotorPromocaoService(1).listarSugestoes(f.hoje).any { it.loteId == 1L })
+        assertEquals(listOf(2L), MotorPromocaoService(1).listarSugestoes(f.hoje).filter { it.loteId == 1L }.map { it.pratoId })
         assertEquals(409, assertFailsWith<ErroPromocao> { f.servico.ativar(p.id, f.ativacao()) }.codigo)
-        assertEquals(409, assertFailsWith<ErroPromocao> { f.servico.criar(CriarPromocaoRequest(1, 2)) }.codigo)
+        val outra = f.servico.criar(CriarPromocaoRequest(1, 2))
+        f.servico.ativar(outra.id, f.ativacao())
         assertFalse(AlertaService(1).listarLotesPendentes().any { it.loteId == 1L })
-
+        assertEquals(409, assertFailsWith<ErroPromocao> { f.servico.recusar(outra.id) }.codigo)
     }
 
     @Test
@@ -132,7 +152,7 @@ class CicloPromocaoServiceTest {
     fun `legado fica preservado fora do ciclo sem lote inventado`() = runBlocking {
         val f = PromocaoFixture()
         val id = transaction(f.banco) { PromocoesTable.insert {
-            it[PromocoesTable.restauranteId] = 1
+                it[PromocoesTable.restauranteId] = 1L
             it[produtoId] = 1L; it[descontoPct] = 10; it[motivo] = "Legado"
             it[status] = "ATIVA"; it[dataSugestao] = f.hoje.toKotlinLocalDate()
         }[PromocoesTable.id] }

@@ -6,11 +6,11 @@ import br.com.lucroplus.database.LotesTable
 import br.com.lucroplus.models.DesperdicioHistoricoDto
 import br.com.lucroplus.models.DesperdicioIngredienteDto
 import kotlinx.datetime.toKotlinLocalDate
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.*
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDate
 import java.time.Month
-import kotlin.math.round
 
 class RelatorioService(private val restauranteId: Long) {
 
@@ -23,7 +23,7 @@ class RelatorioService(private val restauranteId: Long) {
 
         val lotesVencidosMes = (LotesTable innerJoin IngredientesTable)
             .selectAll()
-            .where { (LotesTable.restauranteId eq restauranteId) and (LotesTable.dataValidade less hojeKmp) and (LotesTable.dataValidade greaterEq primeiroDiaMesKmp) }
+            .where { (IngredientesTable.restauranteId eq restauranteId) and (LotesTable.restauranteId eq restauranteId) and ((LotesTable.dataValidade less hojeKmp) and (LotesTable.dataValidade greaterEq primeiroDiaMesKmp)) }
             .toList()
 
         lotesVencidosMes
@@ -53,7 +53,7 @@ class RelatorioService(private val restauranteId: Long) {
 
         val lotesVencidos = LotesTable
             .selectAll()
-            .where { (LotesTable.restauranteId eq restauranteId) and (LotesTable.dataValidade less hojeKmp) and (LotesTable.dataValidade greaterEq seisMesesAtrasKmp) }
+            .where { (LotesTable.restauranteId eq restauranteId) and ((LotesTable.dataValidade less hojeKmp) and (LotesTable.dataValidade greaterEq seisMesesAtrasKmp)) }
             .toList()
 
         val perdasPorMes = lotesVencidos
@@ -83,12 +83,6 @@ class RelatorioService(private val restauranteId: Long) {
         resultado
     }
 
-    private fun Double.roundTo(decimals: Int): Double {
-        var multiplier = 1.0
-        repeat(decimals) { multiplier *= 10 }
-        return round(this * multiplier) / multiplier
-    }
-
     private fun Month.abreviacaoPtBr(): String = when (this) {
         Month.JANUARY -> "Jan"
         Month.FEBRUARY -> "Fev"
@@ -102,5 +96,9 @@ class RelatorioService(private val restauranteId: Long) {
         Month.OCTOBER -> "Out"
         Month.NOVEMBER -> "Nov"
         Month.DECEMBER -> "Dez"
+    }
+
+    private fun Double.roundTo(decimals: Int): Double {
+        return BigDecimal(this).setScale(decimals, RoundingMode.HALF_UP).toDouble()
     }
 }

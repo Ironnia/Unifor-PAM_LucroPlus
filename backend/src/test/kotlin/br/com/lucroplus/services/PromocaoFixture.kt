@@ -1,9 +1,5 @@
 package br.com.lucroplus.services
 
-import br.com.lucroplus.database.RestaurantesTable
-import br.com.lucroplus.database.UsuariosTable
-import br.com.lucroplus.routes.prepararContaTeste
-
 import br.com.lucroplus.database.*
 import kotlinx.datetime.toKotlinLocalDate
 import org.jetbrains.exposed.sql.*
@@ -14,17 +10,15 @@ import java.time.LocalDate
 import java.util.UUID
 import java.sql.DriverManager
 
-// fixture com banco em memoria para testes
-class PromocaoFixture {
-    var hoje: LocalDate = LocalDate.now()
+class PromocaoFixture(var hoje: LocalDate = LocalDate.now()) {
     val servico = CicloPromocaoService(1) { hoje }
     val banco = criarBanco()
 
     private fun criarBanco(): Database {
-        val nome = "issue39_" + UUID.randomUUID().toString().replace("-", "")
+        val nome = "promo_" + UUID.randomUUID().toString().replace("-", "")
         if (System.getProperty("lucroplus.test.mysql") == "true") {
-            // conexao opcional com mysql se a flag de teste estiver ativa
-            val url = "jdbc:mysql://127.0.0.1:13319/"
+
+            val url = "jdbc:mysql://127.0.0.1:13316/"
             DriverManager.getConnection(url, "root", "").use { conexao ->
                 conexao.createStatement().use { it.executeUpdate("CREATE DATABASE $nome") }
             }
@@ -36,16 +30,16 @@ class PromocaoFixture {
     init {
         TransactionManager.defaultDatabase = banco
         transaction(banco) {
-            SchemaUtils.create(UsuariosTable, RestaurantesTable, IngredientesTable, ProdutosTable, LotesTable, FichasTecnicasTable,
+            SchemaUtils.create(br.com.lucroplus.database.RestaurantesTable, br.com.lucroplus.database.UsuariosTable, IngredientesTable, ProdutosTable, LotesTable, FichasTecnicasTable,
                 AlertasTable, AcoesAlertaTable, PromocoesTable, VendasTable, ItensVendaTable)
-            prepararContaTeste()
+            br.com.lucroplus.routes.prepararContaTeste()
             IngredientesTable.insert {
-                it[IngredientesTable.restauranteId] = 1
+                it[IngredientesTable.restauranteId] = 1L
                 it[id] = 1; it[nome] = "Tomate"; it[unidade] = "g"
             }
             for (prato in 1L..3L) {
                 ProdutosTable.insert {
-                    it[ProdutosTable.restauranteId] = 1
+                it[ProdutosTable.restauranteId] = 1L
                     it[id] = prato; it[nome] = "Prato $prato"; it[preco] = BigDecimal("20.00")
                     it[categoria] = "Teste"; it[ativo] = true
                 }
@@ -55,15 +49,16 @@ class PromocaoFixture {
                 }
             }
         }
-        lote(1, 7); lote(2, 7, salvo = false); lote(3, -1); lote(4, 16); lote(5, 7, quantidade = 0)
+        lote(1, 7); lote(2, 7, salvo = false); lote(3, -1); lote(4, 15); lote(5, 7, quantidade = 0)
     }
 
     fun lote(idLote: Long, dias: Long, salvo: Boolean = true, quantidade: Int = 1234) = transaction(banco) {
         LotesTable.insert {
-            it[LotesTable.restauranteId] = 1
+                it[LotesTable.restauranteId] = 1L
             it[id] = idLote; it[ingredienteId] = 1L; it[quantidadeG] = quantidade
             it[custoUnitario] = BigDecimal("0.0123"); it[dataEntrada] = hoje.toKotlinLocalDate()
-            it[dataValidade] = hoje.plusDays(dias).toKotlinLocalDate()
+            it[numeroLote] = if (idLote == 1L) "4021" else "${idLote}"
+            it[dataValidade] = hoje.plusDays(dias + 1).toKotlinLocalDate()
         }
         if (salvo) {
             AlertasTable.insert {

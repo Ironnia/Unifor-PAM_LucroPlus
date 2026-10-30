@@ -27,7 +27,7 @@ suspend fun ApplicationCall.contaAutenticada(): ContaAutenticada? {
         respond(HttpStatusCode.Unauthorized, ErrorResponse("Conta indisponível"))
         return null
     }
-    // Tokens antigos, sem a claim, continuam válidos. Quando a claim existe, ela
+
     if (restauranteDoToken != null && restauranteDoToken != conta.restauranteId) {
         respond(HttpStatusCode.Forbidden, ErrorResponse("Sessão vinculada a outro restaurante"))
         return null
@@ -42,7 +42,6 @@ suspend fun ApplicationCall.restauranteAutenticado(): Long? {
         return null
     }
 
-    // A loja do banco é a fonte de verdade. O cliente pode repetir esse ID na URL,
     val restauranteSolicitado = request.queryParameters["restauranteId"]
     if (restauranteSolicitado != null) {
         val idSolicitado = restauranteSolicitado.toLongOrNull()?.takeIf { it > 0 }

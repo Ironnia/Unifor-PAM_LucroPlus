@@ -3,7 +3,8 @@ package br.com.lucroplus.services
 import br.com.lucroplus.database.*
 import br.com.lucroplus.database.DatabaseFactory.dbQuery
 import br.com.lucroplus.models.SugestaoPromocaoDto
-import br.com.lucroplus.models.PreviaPromocaoDto
+import br.com.lucroplus.models.AvisoSugestaoDto
+import br.com.lucroplus.models.StatusPromocao
 import kotlinx.datetime.toKotlinLocalDate
 import org.jetbrains.exposed.sql.*
 import java.math.BigDecimal
@@ -13,64 +14,32 @@ import java.time.LocalDate
 
 class MotorPromocaoService(private val restauranteId: Long) {
     suspend fun listarSugestoes(hoje: LocalDate = LocalDate.now()): List<SugestaoPromocaoDto> = dbQuery {
+        val campanhas = PromocoesTable.selectAll().where { (PromocoesTable.restauranteId eq restauranteId) and (PromocoesTable.loteId.isNotNull()) }.toList()
+        val lotesOcupados = campanhas.filter { it[PromocoesTable.status] in listOf(
+            StatusPromocao.EM_ANDAMENTO.name, StatusPromocao.CONCLUIDA_SUCESSO.name,
+            StatusPromocao.EXPIRADA_COM_PERDA.name
+        ) }
+            .mapNotNull { it[PromocoesTable.loteId] }.toSet()
+        val paresRecusados = campanhas.filter { it[PromocoesTable.status] == "RECUSADA" }
+            .map { it[PromocoesTable.loteId] to it[PromocoesTable.produtoId] }.toSet()
         val lotesSalvos = (AcoesAlertaTable innerJoin LotesTable innerJoin IngredientesTable)
             .selectAll()
-            .where {
-                (LotesTable.restauranteId eq restauranteId) and (IngredientesTable.restauranteId eq restauranteId) and
-                (AcoesAlertaTable.acao eq AcaoAlerta.SALVAR_LOTE.name) and
+            .where { (IngredientesTable.restauranteId eq restauranteId) and (LotesTable.restauranteId eq restauranteId) and ((AcoesAlertaTable.acao eq AcaoAlerta.SALVAR_LOTE.name) and
                     (LotesTable.quantidadeG greater 0) and
                     (LotesTable.dataValidade greaterEq RegraValidadeLote.validadeMinima(hoje).toKotlinLocalDate()) and
-                    (LotesTable.dataValidade lessEq RegraValidadeLote.validadeMaxima(hoje).toKotlinLocalDate())
-            }
+                    (LotesTable.dataValidade lessEq RegraValidadeLote.validadeMaxima(hoje).toKotlinLocalDate())) }
             .orderBy(LotesTable.dataValidade, SortOrder.ASC)
             .map { row ->
                 LotePromocao(
                     row[LotesTable.id], row[LotesTable.numeroLote] ?: "LOT-${row[LotesTable.id]}",
                     row[LotesTable.ingredienteId], row[IngredientesTable.nome],
-                    LocalDate.parse(row[LotesTable.dataValidade].toString()), row[LotesTable.custoUnitario]
+                    RegraValidadeLote.prazoLimiteVenda(LocalDate.parse(row[LotesTable.dataValidade].toString())), row[LotesTable.custoUnitario]
                 )
             }
-        val encaminhados = PromocoesTable.selectAll().where { PromocoesTable.restauranteId eq restauranteId }.mapNotNull { it[PromocoesTable.loteId] }.toSet()
-        calcularSugestoes(lotesSalvos.filter { it.id !in encaminhados }, hoje)
-    }
+        if (lotesSalvos.isEmpty()) return@dbQuery emptyList()
 
-    suspend fun listarPrevias(hoje: LocalDate = LocalDate.now()): List<PreviaPromocaoDto> = dbQuery {
-        val lotesAtivos = (AlertasTable innerJoin LotesTable innerJoin IngredientesTable)
-            .selectAll()
-            .where {
-                (LotesTable.restauranteId eq restauranteId) and (IngredientesTable.restauranteId eq restauranteId) and
-                (AlertasTable.tipo eq "VENCIMENTO") and
-                    (AlertasTable.visualizado eq false) and
-                    (LotesTable.quantidadeG greater 0) and
-                    (LotesTable.dataValidade greaterEq RegraValidadeLote.validadeMinima(hoje).toKotlinLocalDate()) and
-                    (LotesTable.dataValidade lessEq RegraValidadeLote.validadeMaxima(hoje).toKotlinLocalDate())
-            }
-            .orderBy(LotesTable.id, SortOrder.ASC)
-            .map { row ->
-                LotePromocao(
-                    row[LotesTable.id], row[LotesTable.numeroLote] ?: "LOT-${row[LotesTable.id]}",
-                    row[LotesTable.ingredienteId], row[IngredientesTable.nome],
-                    LocalDate.parse(row[LotesTable.dataValidade].toString()), row[LotesTable.custoUnitario]
-                )
-            }
-        calcularSugestoes(lotesAtivos, hoje)
-            .groupBy { it.loteId }
-            .mapNotNull { (loteId, candidatos) ->
-                candidatos.filter { it.vendas30Dias > 0 }
-                    .sortedWith(compareByDescending<SugestaoPromocaoDto> { it.vendas30Dias }.thenBy { it.pratoId })
-                    .firstOrNull()?.let { escolhido ->
-                        PreviaPromocaoDto(loteId, escolhido.pratoId, escolhido.pratoNome,
-                            escolhido.melhorDiaSemana, escolhido.dataSugerida)
-                    }
-            }
-            .sortedBy { it.loteId }
-    }
-
-    private fun calcularSugestoes(lotes: List<LotePromocao>, hoje: LocalDate): List<SugestaoPromocaoDto> {
-        if (lotes.isEmpty()) return emptyList()
-
-        val fichas = (FichasTecnicasTable innerJoin ProdutosTable)
-            .selectAll().where { (ProdutosTable.restauranteId eq restauranteId) and (ProdutosTable.ativo eq true) }
+        val fichas = (FichasTecnicasTable innerJoin ProdutosTable innerJoin IngredientesTable)
+            .selectAll().where { (ProdutosTable.restauranteId eq restauranteId) and (IngredientesTable.restauranteId eq restauranteId) and (ProdutosTable.ativo eq true) }
             .map { row ->
                 ItemFicha(
                     row[ProdutosTable.id], row[ProdutosTable.nome], row[ProdutosTable.preco],
@@ -80,25 +49,18 @@ class MotorPromocaoService(private val restauranteId: Long) {
             }
         val fichasPorProduto = fichas.groupBy { it.produtoId }
         val custoPorIngrediente = LotesTable.selectAll()
-            .where {
-                (LotesTable.restauranteId eq restauranteId) and
-                (LotesTable.quantidadeG greater 0) and
-                    (LotesTable.dataValidade greaterEq hoje.toKotlinLocalDate())
-            }
-            .orderBy(LotesTable.dataEntrada to SortOrder.ASC, LotesTable.id to SortOrder.ASC)
+            .where { (LotesTable.restauranteId eq restauranteId) and ((LotesTable.quantidadeG greater 0) and
+                    (LotesTable.dataValidade greaterEq RegraValidadeLote.validadeMinima(hoje).toKotlinLocalDate())) }
+            .orderBy(LotesTable.dataValidade, SortOrder.ASC)
             .map { it[LotesTable.ingredienteId] to it[LotesTable.custoUnitario] }
             .groupBy({ it.first }, { it.second })
-            .mapValues { it.value.first() } // primeiro lote fifo
-        val pesosPorUnidade = IngredientesTable.selectAll().where { IngredientesTable.restauranteId eq restauranteId }
-            .associate { it[IngredientesTable.id] to it[IngredientesTable.pesoPorUnidadeG] }
+            .mapValues { it.value.first() }
+        val ingredientes = IngredientesTable.selectAll().where { (IngredientesTable.restauranteId eq restauranteId) }.associateBy { it[IngredientesTable.id] }
 
         val vendas = (ItensVendaTable innerJoin VendasTable)
             .selectAll()
-            .where {
-                (VendasTable.restauranteId eq restauranteId) and
-                (VendasTable.dataVenda greaterEq hoje.minusDays(29).toKotlinLocalDate()) and
-                    (VendasTable.dataVenda lessEq hoje.toKotlinLocalDate())
-            }
+            .where { (VendasTable.restauranteId eq restauranteId) and ((VendasTable.dataVenda greaterEq hoje.minusDays(29).toKotlinLocalDate()) and
+                    (VendasTable.dataVenda lessEq hoje.toKotlinLocalDate())) }
             .map { row ->
                 VendaPromocao(
                     row[ItensVendaTable.produtoId],
@@ -107,29 +69,46 @@ class MotorPromocaoService(private val restauranteId: Long) {
                 )
             }.groupBy { it.produtoId }
 
-        return lotes.flatMap { lote ->
+        lotesSalvos.filter { it.id !in lotesOcupados }.flatMap { lote ->
             fichasPorProduto.values
                 .filter { itens -> itens.any { it.ingredienteId == lote.ingredienteId } }
+                .filter { itens -> (lote.id to itens.first().produtoId) !in paresRecusados }
                 .map { itens ->
                     val prato = itens.first()
+                    val avisos = mutableListOf<AvisoSugestaoDto>()
                     val custos = itens.map { item ->
                         val custoGrama = if (item.ingredienteId == lote.ingredienteId) {
                             lote.custoGrama
                         } else custoPorIngrediente[item.ingredienteId]
+                        val ingrediente = ingredientes[item.ingredienteId]
+                        val peso = ingrediente?.get(IngredientesTable.pesoPorUnidadeG)
+                        avisos += DiagnosticoSugestaoPromocao.custoItem(
+                            item.ingredienteId, ingrediente?.get(IngredientesTable.nome) ?: "Ingrediente #${item.ingredienteId}",
+                            item.quantidade, item.unidade, peso, custoGrama
+                        )
                         CalculoSugestaoPromocao.custoItem(
                             item.quantidade, item.unidade,
-                            pesosPorUnidade[item.ingredienteId], custoGrama
+                            peso, custoGrama
                         )
                     }
-                    val custo = custos.takeIf { lista -> lista.all { it != null } }
-                        ?.filterNotNull()?.sumOf { it }
-                    val margem = custo?.let { CalculoSugestaoPromocao.margemPct(prato.preco, it) }
-                    val lucroBruto = custo?.let { prato.preco.subtract(it).setScale(2, RoundingMode.HALF_UP) }
+                    val margem = if (custos.all { it != null }) {
+                        CalculoSugestaoPromocao.margemPct(prato.preco, custos.filterNotNull().sumOf { it })
+                    } else null
                     val historico = vendas[prato.produtoId].orEmpty()
                     val dia = CalculoSugestaoPromocao.melhorDia(
                         historico.map { it.data to it.quantidade }, hoje, lote.prazoLimite
                     )
-                    val dias = RegraValidadeLote.diasAtePrazo(lote.validade, hoje)
+                    if (prato.preco <= BigDecimal.ZERO) avisos += AvisoSugestaoDto(
+                        "MARGEM", "PRECO_INVALIDO", "Margem indisponível: o preço de venda do prato deve ser maior que zero."
+                    )
+                    if (dia == null) avisos += if (historico.none { it.quantidade > 0 }) {
+                        AvisoSugestaoDto("MELHOR_DIA", "SEM_VENDAS_RECENTES",
+                            "Melhor dia indisponível: não há vendas válidas deste prato nos últimos 30 dias.")
+                    } else {
+                        AvisoSugestaoDto("MELHOR_DIA", "SEM_DIA_COMPATIVEL",
+                            "Há histórico de vendas, mas nenhum dia correspondente está disponível até o prazo deste lote.")
+                    }
+                    val dias = java.time.temporal.ChronoUnit.DAYS.between(hoje, lote.prazoLimite).toInt()
                     SugestaoPromocaoDto(
                         loteId = lote.id,
                         numeroLote = lote.numero,
@@ -142,31 +121,25 @@ class MotorPromocaoService(private val restauranteId: Long) {
                         melhorDiaSemana = dia?.dayOfWeek?.nomeEmPortugues(),
                         dataSugerida = dia?.toString(),
                         vendas30Dias = historico.sumOf { it.quantidade },
-                        precoVenda = prato.preco.toDouble(),
-                        lucroBrutoEstimado = lucroBruto?.toDouble(),
                         margemPct = margem?.toDouble(),
-                        limiteDescontoMargemBrutaPct = custo?.let {
-                            CalculoSugestaoPromocao.limiteDescontoPositivo(prato.preco, it)
-                        },
-                        observacao = when {
-                            margem == null -> "Margem indisponível: falta custo de insumo ou unidade válida na ficha técnica."
-                            dia == null -> "Sem vendas dos últimos 30 dias em um dia disponível antes do prazo."
-                            else -> null
-                        }
+                        precoVenda = prato.preco.toDouble(),
+                        lucroBrutoEstimado = custos.takeIf { valores -> valores.all { it != null } }
+                            ?.filterNotNull()?.sumOf { it }?.let { prato.preco.subtract(it).toDouble() },
+                        limiteDescontoMargemBrutaPct = margem?.takeIf { it > BigDecimal.ZERO }?.toInt(),
+
+                        observacao = avisos.takeIf { it.isNotEmpty() }?.joinToString(" ") { it.mensagem },
+                        avisos = avisos
                     )
                 }
         }.sortedWith(compareBy<SugestaoPromocaoDto> { it.prazoLimiteVenda }.thenBy { it.loteId }.thenBy { it.pratoId })
     }
 
-
 }
 
 private data class LotePromocao(
     val id: Long, val numero: String, val ingredienteId: Long, val ingredienteNome: String,
-    val validade: LocalDate, val custoGrama: BigDecimal
-) {
-    val prazoLimite: LocalDate get() = RegraValidadeLote.prazoLimiteVenda(validade)
-}
+    val prazoLimite: LocalDate, val custoGrama: BigDecimal
+)
 
 private data class ItemFicha(
     val produtoId: Long, val produtoNome: String, val preco: BigDecimal,
@@ -175,23 +148,32 @@ private data class ItemFicha(
 
 private data class VendaPromocao(val produtoId: Long, val data: LocalDate, val quantidade: Int)
 
-// funcoes de calculo de desconto e margem
-object CalculoSugestaoPromocao {
-    fun limiteDescontoPositivo(preco: BigDecimal, custo: BigDecimal): Int? {
-        if (preco <= BigDecimal.ZERO || custo < BigDecimal.ZERO) return null
-        val custoCentavos = custo.setScale(2, RoundingMode.HALF_UP)
-        return (0..99).lastOrNull { desconto ->
-            preco.multiply(BigDecimal(100 - desconto))
-                .divide(BigDecimal(100), 2, RoundingMode.HALF_UP) > custoCentavos
+internal object DiagnosticoSugestaoPromocao {
+    fun custoItem(id: Long, nome: String, quantidade: BigDecimal, unidade: String,
+                  pesoPorUnidadeG: Int?, custoGrama: BigDecimal?): List<AvisoSugestaoDto> = buildList {
+        fun aviso(codigo: String, motivo: String) = AvisoSugestaoDto(
+            "MARGEM", codigo, "Margem indisponível: $motivo", id, nome
+        )
+        if (quantidade <= BigDecimal.ZERO) add(aviso("QUANTIDADE_INVALIDA", "a quantidade de $nome na ficha técnica deve ser maior que zero."))
+        if (custoGrama == null) add(aviso("SEM_CUSTO_ELEGIVEL", "$nome não possui lote com saldo e validade vigente para referência de custo."))
+        else if (custoGrama < BigDecimal.ZERO) add(aviso("CUSTO_INVALIDO", "o custo de $nome não pode ser negativo."))
+        when (unidade.lowercase()) {
+            "g", "kg" -> Unit
+            "un", "l" -> if (pesoPorUnidadeG == null || pesoPorUnidadeG <= 0) {
+                add(aviso("PESO_UNIDADE_INVALIDO", "informe um peso por unidade válido para $nome."))
+            }
+            else -> add(aviso("UNIDADE_INVALIDA", "confira a unidade de medida de $nome na ficha técnica ($unidade)."))
         }
     }
+}
 
+object CalculoSugestaoPromocao {
     fun custoItem(quantidade: BigDecimal, unidade: String, pesoPorUnidadeG: Int?, custoGrama: BigDecimal?): BigDecimal? {
         if (quantidade <= BigDecimal.ZERO || custoGrama == null || custoGrama < BigDecimal.ZERO) return null
         val gramas = when (unidade.lowercase()) {
             "g" -> quantidade
-            "kg", "l" -> quantidade.multiply(BigDecimal(1000))
-            "un" -> pesoPorUnidadeG?.takeIf { it > 0 }?.let { quantidade.multiply(BigDecimal(it)) }
+            "kg" -> quantidade.multiply(BigDecimal(1000))
+            "un", "l" -> pesoPorUnidadeG?.takeIf { it > 0 }?.let { quantidade.multiply(BigDecimal(it)) }
             else -> null
         } ?: return null
         return gramas.multiply(custoGrama)

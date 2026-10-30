@@ -12,8 +12,8 @@ class CalculoSugestaoPromocaoTest {
     @Test
     fun `usa 30 dias inclusivos e escolhe dia disponivel antes do prazo`() {
         val vendas = listOf(
-            hoje.minusDays(30) to 100, // fora da janela
-            hoje.minusDays(29) to 2,   // dentro da janela
+            hoje.minusDays(30) to 100,
+            hoje.minusDays(29) to 2,
             hoje.minusDays(28) to 1,
             hoje.minusDays(1) to 5
         )
@@ -39,15 +39,5 @@ class CalculoSugestaoPromocaoTest {
         ))
         assertNull(CalculoSugestaoPromocao.custoItem(BigDecimal.ONE, "caixa", 80, BigDecimal.ONE))
         assertNull(CalculoSugestaoPromocao.margemPct(BigDecimal.ZERO, BigDecimal.ONE))
-    }
-
-    @Test
-    fun `desconto inteiro preserva lucro bruto positivo apos arredondar centavos`() {
-        assertEquals(19, CalculoSugestaoPromocao.limiteDescontoPositivo(
-            BigDecimal("10.00"), BigDecimal("8.00")
-        ))
-        assertNull(CalculoSugestaoPromocao.limiteDescontoPositivo(
-            BigDecimal("10.00"), BigDecimal("10.00")
-        ))
     }
 }

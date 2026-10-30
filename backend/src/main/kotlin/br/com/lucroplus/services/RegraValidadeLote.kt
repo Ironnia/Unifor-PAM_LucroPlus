@@ -5,6 +5,7 @@ import java.time.temporal.ChronoUnit
 
 object RegraValidadeLote {
     fun prazoLimiteVenda(dataValidade: LocalDate): LocalDate = dataValidade.minusDays(1)
+
     fun validadeMinima(hoje: LocalDate): LocalDate = hoje.plusDays(1)
     fun validadeMaxima(hoje: LocalDate): LocalDate = hoje.plusDays(15)
 
