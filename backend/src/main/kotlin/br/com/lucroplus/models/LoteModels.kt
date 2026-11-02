@@ -18,5 +18,35 @@ data class LoteItemDto(
     val diasRestantes: Int,
     val prazoLimiteVenda: String,
     val diasParaPrazoLimite: Int,
-    val criticidade: String // "CRITICO", "ATENCAO", "SAUDAVEL"
+    val criticidade: String,
+    val quantidadeInicialG: Int? = null,
+    val quantidadeRestanteG: Int = quantidadeG,
+    val custoPorGrama: String? = null,
+    val origem: String? = null,
+    val idExterno: String? = null,
+    val compraIdExterno: String? = null,
+    val entradaEm: String? = null
+)
+
+@Serializable
+data class CompraHistoricoDto(
+    val loteId: Long,
+    val numeroLote: String,
+    val dataEntrada: String,
+    val mesReferencia: String,
+    val quantidadeCompradaG: Long,
+    val quantidadeFormatada: String,
+    val precoPorKg: Double,
+    val custoTotal: Double,
+    val emEstoque: Boolean,
+    val quantidadeRestanteG: Long = 0
+)
+
+@Serializable
+data class HistoricoComprasIngredienteResponse(
+    val ingredienteId: Long,
+    val ingredienteNome: String,
+    val unidade: String,
+    val consumoMedioMensalG: Double,
+    val compras: List<CompraHistoricoDto>
 )
