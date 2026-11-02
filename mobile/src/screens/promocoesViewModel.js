@@ -1,4 +1,6 @@
+ 
 export function avisosSugestao(item) {
+   
   if (Array.isArray(item.avisos)) return item.avisos;
   return item.observacao ? [{ campo: 'GERAL', codigo: 'LEGADO', mensagem: item.observacao }] : [];
 }
@@ -23,19 +25,33 @@ export function moeda(valor) {
   const numero = Number(valor);
   return valor == null || !Number.isFinite(numero) ? 'Não informado' : `R$ ${numero.toFixed(2).replace('.', ',')}`;
 }
+export function descontoInicial(limiteInformado) {
+  const limite = limiteInformado == null ? NaN : Number(limiteInformado);
+  return Number.isFinite(limite) ? String(Math.max(1, Math.ceil(limite / 2))) : '';
+}
 export function erroPromocao(error) {
+  if (error.message?.startsWith('Não foi possível conectar ao servidor.')) return error.message;
   if (error.response?.status === 401) return 'Sua sessão expirou. Entre novamente.';
   if ([404, 409].includes(error.response?.status)) return 'A promoção ou o lote mudou no servidor. Atualize a lista antes de tentar novamente.';
   if (error.response?.status === 400) return error.response?.data?.erro || 'Confira o desconto e as datas informadas.';
   if (error.code === 'ECONNABORTED') return 'A API demorou para responder. Atualize a lista para conferir se a ação foi registrada.';
   return error.response?.data?.erro || 'Não foi possível acessar as promoções. Verifique a conexão e tente novamente.';
 }
-export async function carregarPromocoes(api) {
+export async function carregarPromocoes(api, rankingApi) {
   const [sugestoes, campanhas, lotes, resumo] = await Promise.all([api.getSugestoes(), api.getCampanhas(), api.getPendentes(), api.getResumo()]);
+  const ranking = await (rankingApi?.getRanking?.() || Promise.resolve([])).catch(() => []);
+  const pratos = new Map(ranking.map((item) => [item.produtoId, item]));
+  const comPreco = (item) => {
+    const prato = pratos.get(item.pratoId);
+    return prato ? { ...item, precoVenda: prato.preco, lucroBrutoEstimado: prato.preco - prato.cmv } : item;
+  };
   if (![sugestoes, campanhas, lotes].every(Array.isArray) || !resumo || !Number.isInteger(resumo.emAndamento) || resumo.prejuizoEvitado == null || !Number.isFinite(Number(resumo.prejuizoEvitado))) throw new Error('Resposta inválida da API.');
+   
   const persistidas = campanhas.filter((item) => item.status === 'SUGERIDA');
+  const sugestaoPorPrato = new Map(sugestoes.map((item) => [`${item.loteId}-${item.pratoId}`, item]));
   const ocupados = new Set(campanhas.filter((item) => item.status !== 'RECUSADA').map((item) => item.loteId));
-  // pega prato mais vendido
+   
+   
   const recomendacoes = new Map();
   for (const item of sugestoes.filter((candidato) => !ocupados.has(candidato.loteId) && Number(candidato.vendas30Dias) > 0)) {
     const atual = recomendacoes.get(item.loteId);
@@ -47,8 +63,8 @@ export async function carregarPromocoes(api) {
   const candidatos = [...recomendacoes.values()];
   return {
     pendentes: [
-      ...persistidas.map((item) => ({ ...lotes.find((lote) => lote.loteId === item.loteId), ...item, chave: `p-${item.id}` })),
-      ...candidatos.map((item) => ({ ...item, chave: `s-${item.loteId}-${item.pratoId}` })),
+      ...persistidas.map((item) => comPreco({ ...lotes.find((lote) => lote.loteId === item.loteId), ...sugestaoPorPrato.get(`${item.loteId}-${item.pratoId}`), ...item, chave: `p-${item.id}` })),
+      ...candidatos.map((item) => comPreco({ ...lotes.find((lote) => lote.loteId === item.loteId), ...item, chave: `s-${item.loteId}-${item.pratoId}` })),
       ...lotes.filter((lote) => !ocupados.has(lote.loteId) && !candidatos.some((item) => item.loteId === lote.loteId)).map((item) => ({ ...item, semCandidato: true, chave: `l-${item.loteId}` })),
     ],
     andamento: campanhas.filter((item) => item.status === 'EM_ANDAMENTO'), resumo,
@@ -57,6 +73,8 @@ export async function carregarPromocoes(api) {
 export async function executarPromocao(api, item, acao, dados) {
   if (acao === 'SUCESSO' || acao === 'PERDA') return api.confirmar(item.id, acao === 'SUCESSO');
   if (acao === 'DESCARTAR') return api.descartar(item.loteId);
+  if (acao === 'CANCELAR') return api.cancelar(item.id);
+   
   const campanha = item.id ? item : await api.criar(item.loteId, item.pratoId);
   return acao === 'ATIVAR' ? api.ativar(campanha.id, dados) : api.recusar(campanha.id);
 }

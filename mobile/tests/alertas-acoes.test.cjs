@@ -19,6 +19,7 @@ function nodes(tree) {
   return [tree, ...nodes(tree.props?.children)];
 }
 
+ 
 test('subaba de Promocoes abre a tela de campanhas e permite voltar aos Alertas', () => {
   let cursor = 0;
   const state = [];
@@ -44,7 +45,8 @@ test('subaba de Promocoes abre a tela de campanhas e permite voltar aos Alertas'
     '@react-navigation/native': { useFocusEffect: () => {} },
     '@expo/vector-icons': { Ionicons: 'Ionicons' },
     './PromocoesScreen': Campanhas,
-    '../services/api': { promocoesApi: { getPendentes: async () => [] } },
+    '../services/api': { alertasApi: { getAtivos: async () => [] } },
+    '../services/nativeService': { impactoLeve: async () => {}, impactoSucesso: async () => {}, notificarLoteCritico: async () => true },
     './alertasViewModel': load('src/screens/alertasViewModel.js', {}),
   }).default;
   const render = () => { cursor = 0; return Screen({}); };
@@ -53,12 +55,13 @@ test('subaba de Promocoes abre a tela de campanhas e permite voltar aos Alertas'
   let tree = render();
   tab(tree, 'Promoções').props.onPress();
   tree = render();
-  assert.ok(nodes(tree).some((item) => item.type === Campanhas), 'a tela funcional de campanhas deve estar acessível');
+  assert.ok(nodes(tree).some((item) => item.type === Campanhas), 'a tela funcional de campanhas deve estar acessivel');
   tab(tree, 'Alertas').props.onPress();
   tree = render();
   assert.ok(!nodes(tree).some((item) => item.type === Campanhas));
 });
 
+ 
 for (const acao of ['salvarLote', 'marcarCiente']) {
   for (const falhaAcao of [false, true]) {
     test(`${acao}: ${falhaAcao ? 'falha preserva cards' : 'sucesso remove lote mesmo se recarga falhar'}`, async () => {
@@ -66,7 +69,7 @@ for (const acao of ['salvarLote', 'marcarCiente']) {
       const state = [];
       const React = {
         createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
-        Fragment: 'Fragment', useCallback: (fn) => fn, useEffect: (fn) => fn(),
+        Fragment: 'Fragment', useCallback: (fn) => fn,
         useState: (initial) => {
           const index = cursor++;
           if (!(index in state)) state[index] = initial;
@@ -116,7 +119,9 @@ for (const acao of ['salvarLote', 'marcarCiente']) {
       tree = render();
       assert.deepEqual(calls, [27]);
       assert.deepEqual(nodes(tree).find((x) => x.type === 'FlatList').props.data.map((x) => x.id), falhaAcao ? [27, 28, 29] : [29]);
-      assert.equal(badges.at(-1), falhaAcao ? 3 : 1);
+      assert.deepEqual(badges.at(-1), falhaAcao
+        ? { total: 3, criticos: 2, atencao: 1 }
+        : { total: 1, criticos: 0, atencao: 1 });
       assert.equal(gets, falhaAcao ? 1 : 2);
     });
   }

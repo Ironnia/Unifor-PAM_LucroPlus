@@ -26,6 +26,8 @@ export function formatarPercentual(valor) {
   return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(valor)}%`;
 }
 
+ 
+ 
 export function obterSaudeMargem(margemPct) {
   if (margemPct >= 50) return { rotulo: 'Alta margem', cor: '#4caf50' };
   if (margemPct >= 20) return { rotulo: 'Margem moderada', cor: '#ffc107' };

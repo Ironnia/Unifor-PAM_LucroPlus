@@ -74,7 +74,8 @@ export function validarBcg(dados) {
 export function agruparPorQuadrante(pratos) {
   return CATEGORIAS_BCG.map((categoria) => {
     const itens = pratos.filter((prato) => prato.categoriaBcg === categoria.codigo);
-    // O item vazio mantém uma âncora real na SectionList. Assim, o toque no grid
+     
+     
     const data = itens.length ? itens : [{ produtoId: `vazio-${categoria.codigo}`, vazio: true }];
     return { ...categoria, quantidade: itens.length, data };
   });

@@ -5,7 +5,7 @@ export default function ConfiguracoesScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>⚙️ Configurações</Text>
-      <Text style={styles.subtitle}>Conexão com PDV e preferências</Text>
+      <Text style={styles.subtitle}>Integração PDV e preferências</Text>
     </View>
   );
 }

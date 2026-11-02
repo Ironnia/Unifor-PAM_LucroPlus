@@ -53,6 +53,7 @@ export default function PerfilScreen({ onLogout }) {
     if (saindo) return;
     setSaindo(true);
     const encerrou = await onLogout?.();
+     
     if (!encerrou) setSaindo(false);
   };
 

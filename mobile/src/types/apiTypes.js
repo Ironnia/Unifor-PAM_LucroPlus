@@ -1,7 +1,24 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export const CriticidadeLote = {
-  CRITICO: 'CRITICO',   // até 7 dias
-  ATENCAO: 'ATENCAO',   // 8 a 14 dias
-  SAUDAVEL: 'SAUDAVEL', // mais de 14 dias
+  CRITICO: 'CRITICO',    
+  ATENCAO: 'ATENCAO',    
+  SAUDAVEL: 'SAUDAVEL',  
 };
 
 export const TipoUsuario = {
@@ -9,3 +26,12 @@ export const TipoUsuario = {
   GERENTE: 'GERENTE',
   ESTOQUISTA: 'ESTOQUISTA',
 };
+
+
+
+
+
+
+
+
+

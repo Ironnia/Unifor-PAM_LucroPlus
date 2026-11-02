@@ -1,3 +1,7 @@
+
+
+
+
 export const FILTROS_ALERTA = ['TODOS', 'CRITICO', 'ATENCAO'];
 
 export function validarListaAlertas(dados) {
@@ -6,19 +10,6 @@ export function validarListaAlertas(dados) {
     throw new Error('A API retornou um formato inesperado para os alertas.');
   }
   return dados;
-}
-
-export function associarPrevias(alertas, previas) {
-  if (!Array.isArray(previas)) throw new Error('A API retornou um formato inesperado para as prévias.');
-  const porLote = new Map();
-  for (const previa of previas) {
-    if (!Number.isInteger(previa?.loteId) || !Number.isInteger(previa?.pratoId) ||
-        typeof previa?.pratoNome !== 'string' || !previa.pratoNome.trim()) {
-      throw new Error('A API retornou um formato inesperado para as prévias.');
-    }
-    porLote.set(previa.loteId, previa);
-  }
-  return alertas.map((alerta) => ({ ...alerta, previaConsultiva: porLote.get(alerta.loteId) || null }));
 }
 
 export function filtrarAlertas(alertas, filtro) {
@@ -31,6 +22,18 @@ export function contarAlertas(alertas) {
     CRITICO: alertas.filter((alerta) => alerta.criticidade === 'CRITICO').length,
     ATENCAO: alertas.filter((alerta) => alerta.criticidade === 'ATENCAO').length,
   };
+}
+
+export function contagemNavegacao(alertas) {
+  const contagens = contarAlertas(alertas);
+  return { total: contagens.TODOS, criticos: contagens.CRITICO, atencao: contagens.ATENCAO };
+}
+
+export function normalizarContagemNavegacao(valor) {
+  if (typeof valor === 'number') return { total: Math.max(0, valor), criticos: Math.max(0, valor), atencao: 0 };
+  const criticos = Math.max(0, Number(valor?.criticos) || 0);
+  const atencao = Math.max(0, Number(valor?.atencao) || 0);
+  return { total: criticos + atencao, criticos, atencao };
 }
 
 export function formatarData(data) {
@@ -51,22 +54,4 @@ export function textoPrazo(dias) {
   if (dias === 1) return 'Prazo amanhã';
   if (Number.isInteger(dias) && dias > 1) return `Faltam ${dias} dias`;
   return 'Prazo não informado';
-}
-
-export function textoPrevia(previsao) {
-  if (!previsao?.pratoNome) return 'Recomendação de prato e dia indisponível no momento.';
-  if (!previsao?.melhorDia) return `Prato sugerido: ${previsao.pratoNome}. Dia sugerido indisponível.`;
-  return `Prato sugerido: ${previsao.pratoNome}. Melhor dia: ${previsao.melhorDia}.`;
-}
-
-export function contagemNavegacao(alertas) {
-  const contagens = contarAlertas(alertas);
-  return { total: contagens.TODOS, criticos: contagens.CRITICO, atencao: contagens.ATENCAO };
-}
-
-export function normalizarContagemNavegacao(valor) {
-  if (typeof valor === 'number') return { total: Math.max(0, valor), criticos: Math.max(0, valor), atencao: 0 };
-  const criticos = Math.max(0, Number(valor?.criticos) || 0);
-  const atencao = Math.max(0, Number(valor?.atencao) || 0);
-  return { total: criticos + atencao, criticos, atencao };
 }

@@ -2,9 +2,38 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config/environment';
 import { sessionStorage } from './sessionStorage';
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const client = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000, // 10 segundos de timeout para evitar travamento de UI
+  timeout: 10000,  
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -19,12 +48,16 @@ const SESSION_EXPIRED_MESSAGE = 'Sua sessão expirou. Entre novamente.';
 const SESSION_CLEAR_FAILED_MESSAGE = 'Sua sessão expirou, mas não foi possível remover o acesso salvo neste aparelho. Tente novamente.';
 const NETWORK_ERROR_MESSAGE = 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.';
 
+
+
+
 export const setAuthToken = (token) => {
   authToken = token;
 };
 
 export const getAuthToken = () => authToken;
 
+ 
 export const subscribeToUnauthorized = (listener) => {
   unauthorizedListener = listener;
   return () => {
@@ -33,6 +66,7 @@ export const subscribeToUnauthorized = (listener) => {
 };
 
 client.interceptors.request.use((config) => {
+   
   if (config.skipAuth) return config;
   if (authToken) {
     config.headers = config.headers || {};
@@ -45,6 +79,8 @@ client.interceptors.request.use((config) => {
 client.interceptors.response.use(
   (response) => response,
   async (error) => {
+     
+     
     if (!error.response && (
       ['ERR_NETWORK', 'ECONNREFUSED', 'ECONNABORTED', 'ETIMEDOUT'].includes(error.code)
       || error.message === 'Network Error'
@@ -53,6 +89,7 @@ client.interceptors.response.use(
     }
     const requestToken = error.config?.sessionToken;
     if (error.response?.status === 401 && requestToken && requestToken === authToken) {
+       
       setAuthToken(null);
       const task = sessionStorage.clear()
         .then(
@@ -75,7 +112,9 @@ const saveSession = async (token) => {
   }
 
   try {
+     
     if (invalidationPromise) await invalidationPromise;
+     
     await sessionStorage.write(token);
   } catch (_) {
     const error = new Error('Não foi possível salvar a sessão com segurança neste aparelho.');
@@ -109,15 +148,18 @@ export const authApi = {
 
     setAuthToken(token);
     try {
+       
       await authApi.getMe();
       return true;
     } catch (error) {
       if (authToken === token) setAuthToken(null);
+       
       return false;
     }
   },
 
   logout: async () => {
+     
     await sessionStorage.clear();
     setAuthToken(null);
   },
@@ -134,6 +176,8 @@ export const lotesApi = {
   },
 };
 
+ 
+ 
 export const cardapioApi = {
   getRanking: async () => {
     const response = await client.get('/cardapio/ranking');
@@ -145,6 +189,8 @@ export const cardapioApi = {
   },
 };
 
+ 
+ 
 export const alertasApi = {
   getAtivos: async () => {
     const response = await client.get('/alertas/vencimento');
@@ -174,7 +220,6 @@ export const promocoesApi = {
     const response = await client.get('/promocoes/pendentes');
     return response.data;
   },
-  getPrevias: async () => (await client.get('/promocoes/previas')).data,
 };
 
 export const pdvApi = {
@@ -184,6 +229,9 @@ export const pdvApi = {
   },
 };
 
+ 
+ 
+ 
 export const dashboardApi = {
   getKpis: async () => {
     const response = await client.get('/dashboard/kpis');
