@@ -91,6 +91,31 @@ test('falha de rede preserva o token para a próxima abertura', async () => {
   assert.equal(api.getAuthToken(), null);
 });
 
+for (const failure of [
+  { code: 'ERR_NETWORK', message: 'Network Error' },
+  { code: 'ECONNREFUSED', message: 'connect ECONNREFUSED' },
+  { code: 'ECONNABORTED', message: 'timeout of 10000ms exceeded' },
+]) {
+  test(`erro ${failure.code} sem resposta HTTP mostra mensagem compreensível`, async () => {
+    const api = loadApi({ get: async () => { throw Object.assign(new Error(failure.message), failure); } });
+    await assert.rejects(api.lotesApi.getLotes(), (error) => {
+      assert.equal(error.message, 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.');
+      assert.equal(error.code, failure.code);
+      assert.equal(error.response, undefined);
+      return true;
+    });
+  });
+}
+
+test('erro HTTP mantém a mensagem do servidor', async () => {
+  const api = loadApi({ get: async () => { throw { code: 'ERR_NETWORK', response: { status: 503 }, message: 'Servidor indisponível' }; } });
+  await assert.rejects(api.lotesApi.getLotes(), (error) => {
+    assert.equal(error.message, 'Servidor indisponível');
+    assert.equal(error.response.status, 503);
+    return true;
+  });
+});
+
 test('logout só termina após remover o token do aparelho', async () => {
   let fail = true;
   const api = loadApi({ clear: async () => { if (fail) throw new Error('falha no storage'); } });

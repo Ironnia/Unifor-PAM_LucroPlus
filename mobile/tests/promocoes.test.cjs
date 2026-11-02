@@ -14,10 +14,11 @@ function load(file, mocks = {}) {
 const view = load('src/screens/promocoesViewModel.js');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
-const { InformacoesSugestao } = load('src/screens/PromocoesScreen.js', {
+const { InformacoesSugestao, ResumoPratoPendente } = load('src/screens/PromocoesScreen.js', {
   react: React,
-  'react-native': { Text: ({ children }) => React.createElement('p', null, children), StyleSheet: { create: (styles) => styles } },
+  'react-native': { Text: ({ children }) => React.createElement('p', null, children), View: ({ children }) => React.createElement('div', null, children), StyleSheet: { create: (styles) => styles } },
   '@react-navigation/native': {}, '../services/api': {},
+  '@expo/vector-icons': { Ionicons: () => React.createElement('i') },
   './alertasViewModel': { formatarData: (data) => data }, './promocoesViewModel': view,
 });
 
@@ -55,6 +56,12 @@ test('desconto obrigatório e inteiro de 1 a 99, sem bloquear pela margem', () =
   for (const descontoPct of ['', '0', '100', '-1', '1.5', 'abc']) assert.throws(() => view.validarAtivacao({ ...form, descontoPct }, '2026-09-30', '2026-09-26'), /desconto/);
   for (const descontoPct of ['1', '99']) assert.equal(view.validarAtivacao({ ...form, descontoPct }, '2026-09-30', '2026-09-26').descontoPct, Number(descontoPct));
 });
+test('modal inicia com metade arredondada para cima do limite recomendado', () => {
+  assert.equal(view.descontoInicial(19), '10');
+  assert.equal(view.descontoInicial(20), '10');
+  assert.equal(view.descontoInicial(1), '1');
+  assert.equal(view.descontoInicial(null), '');
+});
 test('datas reais, início não passado, ordem e prazo inclusivo do lote', () => {
   assert.deepEqual(view.validarAtivacao(form, form.dataFim, form.dataInicio), { ...form, descontoPct: 20 });
   for (const mudanca of [{ dataInicio: '2026-09-25' }, { dataFim: '2026-09-25' }, { dataFim: '2026-10-01' }, { dataFim: '2026-02-30' }, { dataFim: '' }, { dataFim: '28/09/2026' }]) assert.throws(() => view.validarAtivacao({ ...form, ...mudanca }, '2026-09-30', '2026-09-26'));
@@ -70,6 +77,15 @@ test('persistidas sobrevivem, lotes sem candidatos aparecem e duplicatas não', 
   assert.equal(resultado.pendentes[2].semCandidato, true);
   assert.equal(resultado.andamento[0].aguardaConfirmacao, false);
   assert.equal(resultado.resumo.prejuizoEvitado, '15.18');
+});
+test('preço e lucro do card vêm do prato correspondente no ranking', async () => {
+  const api = leitura([], [{ loteId: 10, pratoId: 7, pratoNome: 'X-Salada', ingredienteNome: 'Queijo', numeroLote: '4021', vendas30Dias: 4, limiteDescontoMargemBrutaPct: 20 }], [{ loteId: 10, criticidade: 'CRITICO' }]);
+  const rankingApi = { getRanking: async () => [{ produtoId: 7, preco: 28, cmv: 11 }, { produtoId: 8, preco: 99, cmv: 1 }] };
+  const { pendentes } = await view.carregarPromocoes(api, rankingApi);
+  assert.equal(pendentes[0].numeroLote, '4021');
+  assert.equal(pendentes[0].criticidade, 'CRITICO');
+  assert.equal(pendentes[0].precoVenda, 28);
+  assert.equal(pendentes[0].lucroBrutoEstimado, 17);
 });
 test('vazio é válido; resposta malformada ou falha parcial não inventa totais', async () => {
   assert.deepEqual((await view.carregarPromocoes(leitura())).pendentes, []);
@@ -106,6 +122,17 @@ test('card mostra preço, lucro bruto e limite consultivo', () => {
   assert.match(html, /Lucro estimado: R\$ 2,00 \(20\.0%\)/);
   assert.match(html, /Desconto recomendado: até 19%/);
 });
+test('card pendente persistido preserva valores completos após cancelamento', async () => {
+  const api = leitura([{ id: 12, loteId: 10, pratoId: 7, status: 'SUGERIDA' }], [
+    { loteId: 10, pratoId: 7, precoVenda: 28, lucroBrutoEstimado: 17, limiteDescontoMargemBrutaPct: 19 },
+  ], [{ loteId: 10 }]);
+  const { pendentes } = await view.carregarPromocoes(api);
+  assert.equal(pendentes[0].id, 12);
+  const html = renderToStaticMarkup(React.createElement(ResumoPratoPendente, { item: pendentes[0] }));
+  assert.match(html, /Preço atual: R\$ 28,00/);
+  assert.match(html, /Lucro atual: R\$ 17,00/);
+  assert.match(html, /Desconto recomendado: até 19%/);
+});
 test('descarte sem candidato chama rota própria; recusa encerra sem alternativa', async () => {
   const chamadas = [];
   const api = { descartar: async (...args) => chamadas.push(['descartar', ...args]), recusar: async (...args) => chamadas.push(['recusar', ...args]) };
@@ -119,15 +146,15 @@ test('falha de POST impede PATCH e falha de PATCH permite recuperação', async 
   assert.equal(ativou, false);
   await assert.rejects(view.executarPromocao({ criar: async () => ({ id: 1 }), ativar: async () => { throw Error('timeout'); } }, { loteId: 1, pratoId: 1 }, 'ATIVAR', form), /timeout/);
 });
-test('rotas, verbos, corpos e JWT seguem o contrato', async () => {
+test('rotas, verbos, corpos e JWT seguem promocoes', async () => {
   const calls = []; let intercept;
   const client = { interceptors: { request: { use: (fn) => { intercept = fn; } }, response: { use: () => {} } } };
   for (const method of ['get', 'post', 'patch']) client[method] = async (url, data) => { calls.push(intercept({ method, url, data, headers: {} })); return { data: {} }; };
   const api = load('src/services/api.js', { axios: { create: () => client }, '../config/environment': { API_BASE_URL: 'http://localhost' }, './sessionStorage': { sessionStorage: {} } });
   api.setAuthToken('jwt-ficticio');
   await api.promocoesApi.getSugestoes(); await api.promocoesApi.getCampanhas(); await api.promocoesApi.getPendentes(); await api.promocoesApi.getResumo();
-  await api.promocoesApi.criar(2, 3); await api.promocoesApi.ativar(7, form); await api.promocoesApi.recusar(8); await api.promocoesApi.descartar(10); await api.promocoesApi.confirmar(9, false);
-  assert.deepEqual(calls.map(({ method, url, data }) => [method, url, data]), [['get', '/promocoes/sugestoes', undefined], ['get', '/promocoes', undefined], ['get', '/promocoes/pendentes', undefined], ['get', '/promocoes/resumo', undefined], ['post', '/promocoes', { loteId: 2, pratoId: 3 }], ['patch', '/promocoes/7/ativar', form], ['patch', '/promocoes/8/recusar', undefined], ['patch', '/promocoes/pendentes/10/descartar', undefined], ['patch', '/promocoes/9/confirmar', { loteEscoado: false }]]);
+  await api.promocoesApi.criar(2, 3); await api.promocoesApi.ativar(7, form); await api.promocoesApi.recusar(8); await api.promocoesApi.cancelar(7); await api.promocoesApi.descartar(10); await api.promocoesApi.confirmar(9, false);
+  assert.deepEqual(calls.map(({ method, url, data }) => [method, url, data]), [['get', '/promocoes/sugestoes', undefined], ['get', '/promocoes', undefined], ['get', '/promocoes/pendentes', undefined], ['get', '/promocoes/resumo', undefined], ['post', '/promocoes', { loteId: 2, pratoId: 3 }], ['patch', '/promocoes/7/ativar', form], ['patch', '/promocoes/8/recusar', undefined], ['patch', '/promocoes/7/cancelar', undefined], ['patch', '/promocoes/pendentes/10/descartar', undefined], ['patch', '/promocoes/9/confirmar', { loteEscoado: false }]]);
   assert.ok(calls.every((call) => call.headers.Authorization === 'Bearer jwt-ficticio'));
 });
 test('mensagens distinguem sessão, conflito, validação e timeout', () => {
@@ -136,4 +163,11 @@ test('mensagens distinguem sessão, conflito, validação e timeout', () => {
   assert.match(view.erroPromocao({ response: { status: 400 } }), /desconto/);
   assert.match(view.erroPromocao({ code: 'ECONNABORTED' }), /registrada/);
   assert.equal(view.moeda('15.18'), 'R$ 15,18'); assert.equal(view.moeda(null), 'Não informado');
+});
+
+test('cancelar campanha usa o ID persistido sem criar outra promoção', async () => {
+  const chamadas = [];
+  const api = { cancelar: async (id) => { chamadas.push(id); return { id, status: 'SUGERIDA' }; } };
+  assert.deepEqual(await view.executarPromocao(api, { id: 7, loteId: 1 }, 'CANCELAR'), { id: 7, status: 'SUGERIDA' });
+  assert.deepEqual(chamadas, [7]);
 });
