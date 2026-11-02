@@ -63,7 +63,8 @@ test('logout remove token, opção biométrica e as duas chaves legadas', async 
 
   await sessionStorage.clear();
 
-  assert.deepEqual(secureDeletes, ['lucroplus.jwt.v1']);
+  assert.deepEqual(secureDeletes, ['lucroplus.jwt.v1', 'lucroplus.biometria.v1']);
+  assert.deepEqual(asyncDeletes, ['@LucroPlus:token', '@LucroPlus:usuario']);
 });
 
 test('a tela busca /auth/me pelo serviço centralizado e oferece suporte acadêmico', () => {

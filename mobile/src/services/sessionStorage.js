@@ -1,14 +1,26 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+ 
+ 
+ 
 const TOKEN_KEY = 'lucroplus.jwt.v1';
+const BIOMETRIA_KEY = 'lucroplus.biometria.v1';
+const LEGACY_SESSION_KEYS = ['@LucroPlus:token', '@LucroPlus:usuario'];
 
 export const sessionStorage = {
   read: () => Platform.OS === 'web' ? Promise.resolve(null) : SecureStore.getItemAsync(TOKEN_KEY),
   write: (token) => Platform.OS === 'web' ? Promise.resolve() : SecureStore.setItemAsync(TOKEN_KEY, token),
+  biometriaAtiva: async () => Platform.OS !== 'web' && await SecureStore.getItemAsync(BIOMETRIA_KEY) === 'true',
+  ativarBiometria: () => Platform.OS === 'web' ? Promise.resolve() : SecureStore.setItemAsync(BIOMETRIA_KEY, 'true'),
   clear: async () => {
-    if (Platform.OS !== 'web') {
-      await SecureStore.deleteItemAsync(TOKEN_KEY);
-    }
+     
+     
+    await Promise.all([
+      Platform.OS === 'web' ? Promise.resolve() : SecureStore.deleteItemAsync(TOKEN_KEY),
+      Platform.OS === 'web' ? Promise.resolve() : SecureStore.deleteItemAsync(BIOMETRIA_KEY),
+      AsyncStorage.multiRemove(LEGACY_SESSION_KEYS),
+    ]);
   },
 };
