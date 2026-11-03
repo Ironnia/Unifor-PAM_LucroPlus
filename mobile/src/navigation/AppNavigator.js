@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, AppState, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,30 @@ import { contagemNavegacao, normalizarContagemNavegacao } from '../screens/alert
 import PerfilScreen from '../screens/PerfilScreen';
 import { alertasApi, authApi, subscribeToUnauthorized } from '../services/api';
 import { sessionStorage } from '../services/sessionStorage';
+import { autenticarBiometria } from '../services/nativeService';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 const Tab = createBottomTabNavigator();
 
@@ -23,6 +47,9 @@ export default function AppNavigator() {
   const [sessionMessage, setSessionMessage] = useState(null);
   const [alertCount, setAlertCount] = useState(0);
   const { criticos, atencao } = normalizarContagemNavegacao(alertCount);
+  const [bloqueado, setBloqueado] = useState(false);
+  const autenticandoDigital = useRef(false);
+  const estadoAnterior = useRef(AppState.currentState);
 
   useEffect(() => {
     let active = true;
@@ -32,17 +59,57 @@ export default function AppNavigator() {
       setSessionMessage(message);
       setIsAuthenticated(false);
     });
-    authApi.restoreSession()
+    sessionStorage.biometriaAtiva()
+      .then(async (ativa) => {
+        if (!ativa) return false;
+        if (!await sessionStorage.read()) return false;
+        autenticandoDigital.current = true;
+        try {
+          if (!await autenticarBiometria()) return false;
+          return await authApi.restoreSession();
+        } finally {
+          autenticandoDigital.current = false;
+        }
+      })
       .then((restored) => {
         if (active) setIsAuthenticated(restored);
       })
       .catch(() => {
+         
       })
       .finally(() => {
         if (active) setRestoringSession(false);
       });
     return () => { active = false; unsubscribe(); };
   }, []);
+
+  useEffect(() => {
+    const assinatura = AppState.addEventListener('change', async (estado) => {
+      const anterior = estadoAnterior.current;
+      estadoAnterior.current = estado;
+       
+      if (autenticandoDigital.current || !isAuthenticated) return;
+      if (estado !== 'active') {
+        if (await sessionStorage.biometriaAtiva()) setBloqueado(true);
+        return;
+      }
+      if (anterior === 'active') return;
+      if (!await sessionStorage.biometriaAtiva()) return;
+      autenticandoDigital.current = true;
+      setBloqueado(true);
+      try {
+        const liberado = await autenticarBiometria('Confirme sua digital para continuar')
+          && await authApi.restoreSession();
+        if (liberado) setBloqueado(false);
+        else setIsAuthenticated(false);
+      } catch (_) {
+        setIsAuthenticated(false);
+      } finally {
+        autenticandoDigital.current = false;
+      }
+    });
+    return () => assinatura.remove();
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -61,7 +128,7 @@ export default function AppNavigator() {
       setAlertCount(0);
       setSessionMessage(null);
       setIsAuthenticated(false);
-
+      setBloqueado(false);
       return true;
     } catch (_) {
       Alert.alert('Não foi possível sair', 'Tente novamente para remover a sessão deste aparelho.');
@@ -78,9 +145,13 @@ export default function AppNavigator() {
   if (!isAuthenticated) {
     return <LoginScreen sessionMessage={sessionMessage} onLoginSuccess={() => {
       setSessionMessage(null);
-
+      setBloqueado(false);
       setIsAuthenticated(true);
     }} />;
+  }
+
+  if (bloqueado) {
+    return <View style={styles.loading}><ActivityIndicator color="#6c63ff" size="large" /></View>;
   }
 
   return (

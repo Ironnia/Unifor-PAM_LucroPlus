@@ -9,9 +9,40 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { authApi } from '../services/api';
+import { sessionStorage } from '../services/sessionStorage';
+import { autenticarBiometria, verificarSuporteBiometria } from '../services/nativeService';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 export default function LoginScreen({ onLoginSuccess, sessionMessage }) {
   const [email, setEmail] = useState('');
@@ -19,6 +50,7 @@ export default function LoginScreen({ onLoginSuccess, sessionMessage }) {
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
+  const [biometriaDisponivel, setBiometriaDisponivel] = useState(false);
 
   const [modoRegistro, setModoRegistro] = useState(false);
   const [nome, setNome] = useState('');
@@ -26,6 +58,29 @@ export default function LoginScreen({ onLoginSuccess, sessionMessage }) {
   useEffect(() => {
     if (sessionMessage) setErro(sessionMessage);
   }, [sessionMessage]);
+
+  useEffect(() => {
+    let ativo = true;
+    Promise.all([sessionStorage.read(), sessionStorage.biometriaAtiva(), verificarSuporteBiometria()])
+      .then(([token, habilitada, suporte]) => { if (ativo) setBiometriaDisponivel(Boolean(token && habilitada && suporte)); })
+      .catch(() => { if (ativo) setBiometriaDisponivel(false); });
+    return () => { ativo = false; };
+  }, []);
+
+  const entrarComBiometria = async () => {
+    if (carregando) return;
+    setCarregando(true);
+    setErro('');
+    try {
+      if (!await autenticarBiometria()) return;
+      if (await authApi.restoreSession()) onLoginSuccess?.();
+      else setErro('Sessão expirada ou sem conexão. Entre com e-mail e senha.');
+    } catch (_) {
+      setErro('Não foi possível validar a sessão. Entre com e-mail e senha.');
+    } finally {
+      setCarregando(false);
+    }
+  };
 
   const validarFormulario = () => {
     setErro('');
@@ -59,6 +114,19 @@ export default function LoginScreen({ onLoginSuccess, sessionMessage }) {
         await authApi.register(nome, email, senha);
       } else {
         await authApi.login(email, senha);
+      }
+
+       
+      const suporte = await verificarSuporteBiometria();
+      if (suporte && !await sessionStorage.biometriaAtiva()) {
+        Alert.alert('Ativar impressão digital?', 'Use a digital para abrir o aplicativo nas próximas vezes.', [
+          { text: 'Agora não', onPress: () => onLoginSuccess?.() },
+          { text: 'Ativar', onPress: async () => {
+            try { await sessionStorage.ativarBiometria(); } catch (_) {   }
+            onLoginSuccess?.();
+          } },
+        ], { cancelable: false });
+        return;
       }
 
       if (onLoginSuccess) {
@@ -167,6 +235,13 @@ export default function LoginScreen({ onLoginSuccess, sessionMessage }) {
               <Text style={styles.primaryButtonText}>{modoRegistro ? 'Cadastrar e Entrar' : 'Entrar'}</Text>
             )}
           </TouchableOpacity>
+
+          {!modoRegistro && biometriaDisponivel ? (
+            <TouchableOpacity style={styles.biometriaButton} onPress={entrarComBiometria} disabled={carregando} accessibilityRole="button" accessibilityLabel="Entrar com biometria">
+              <Ionicons name="finger-print-outline" size={20} color="#bcb8ff" />
+              <Text style={styles.biometriaText}>Entrar com biometria</Text>
+            </TouchableOpacity>
+          ) : null}
 
           <TouchableOpacity
             style={styles.toggleModeBtn}
@@ -306,6 +381,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
   },
+  biometriaButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 12, marginTop: 8,
+  },
+  biometriaText: { color: '#bcb8ff', fontSize: 14, fontWeight: '600' },
   toggleModeBtn: {
     marginTop: 16,
     alignItems: 'center',
