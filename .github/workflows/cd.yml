@@ -79,3 +79,4 @@ jobs:
           files: |
             release/backend/*-jar-with-dependencies.jar
             release/mobile/lucroplus-mobile-android.zip
+          fail_on_unmatched_files: true
