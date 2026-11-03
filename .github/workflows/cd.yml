@@ -1,0 +1,81 @@
+name: CD - LucroPlus
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend / Fat JAR
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      - run: chmod +x mvnw
+      - run: ./mvnw clean package -DskipTests
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lucroplus-backend-jar
+          path: backend/target/*-jar-with-dependencies.jar
+          if-no-files-found: error
+
+  mobile:
+    name: Mobile / Android bundle
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npx expo export --platform android --output-dir dist-release
+      - run: zip -qr ../lucroplus-mobile-android.zip dist-release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lucroplus-mobile-android
+          path: lucroplus-mobile-android.zip
+          if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [backend, mobile]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: lucroplus-backend-jar
+          path: release/backend
+      - uses: actions/download-artifact@v4
+        with:
+          name: lucroplus-mobile-android
+          path: release/mobile
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/backend/*-jar-with-dependencies.jar
+            release/mobile/lucroplus-mobile-android.zip
