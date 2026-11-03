@@ -90,7 +90,7 @@ export default function AppNavigator() {
        
       if (autenticandoDigital.current || !isAuthenticated) return;
       if (estado !== 'active') {
-        if (await sessionStorage.biometriaAtiva()) setBloqueado(true);
+        if (await sessionStorage.biometriaAtiva() && estadoAnterior.current !== 'active') setBloqueado(true);
         return;
       }
       if (anterior === 'active') return;
