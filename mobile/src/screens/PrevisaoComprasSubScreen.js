@@ -81,7 +81,7 @@ export default function PrevisaoComprasSubScreen() {
         </View>
       );
     }
-    const largura = `${Math.min(100, item.coberturaPct)}%`;
+    const largura = `${Math.min(100, Math.max(0, item.coberturaPct))}%`;
     return (
       <View style={styles.card}>
         <View style={styles.cardTopo}>
