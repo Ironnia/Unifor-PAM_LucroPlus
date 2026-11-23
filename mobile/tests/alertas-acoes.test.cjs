@@ -47,6 +47,7 @@ test('subaba de Promocoes abre a tela de campanhas e permite voltar aos Alertas'
     './PromocoesScreen': Campanhas,
     '../services/api': { alertasApi: { getAtivos: async () => [] } },
     '../services/nativeService': { impactoLeve: async () => {}, impactoSucesso: async () => {}, notificarLoteCritico: async () => true },
+    '../components/FiltrosCriticidade': load('src/components/FiltrosCriticidade.js', { react: React, 'react-native': native }),
     './alertasViewModel': load('src/screens/alertasViewModel.js', {}),
   }).default;
   const render = () => { cursor = 0; return Screen({}); };
@@ -103,11 +104,23 @@ for (const acao of ['salvarLote', 'marcarCiente']) {
           impactoLeve: async () => {}, impactoSucesso: async () => {},
           notificarLoteCritico: async () => true,
         },
+        '../components/FiltrosCriticidade': load('src/components/FiltrosCriticidade.js', { react: React, 'react-native': native }),
         './alertasViewModel': load('src/screens/alertasViewModel.js', {}),
       }).default;
       const render = () => { cursor = 0; return Screen({ onCountChange: (n) => badges.push(n) }); };
       render(); focus(); await new Promise(setImmediate);
+      const conferirSemaforo = (tree, esperado) => {
+        const resumo = nodes(tree).find((x) => x.type?.name === 'SemaforoCriticidade');
+        const itens = nodes(resumo.type(resumo.props))
+          .filter((x) => x.type === 'Text').map((x) => x.props.children.join(''));
+        assert.deepEqual(itens, esperado);
+        const filtros = nodes(tree).find((x) => x.type?.name === 'FiltrosCriticidade');
+        const rotulos = nodes(filtros.type(filtros.props))
+          .filter((x) => x.type === 'Text').map((x) => x.props.children.join(''));
+        assert.deepEqual(rotulos, ['Todos', 'Críticos', 'Atenção']);
+      };
       let tree = render();
+      conferirSemaforo(tree, ['Críticos: 2', 'Atenção: 1']);
       const list = nodes(tree).find((x) => x.type === 'FlatList');
       const card = list.props.renderItem({ item: alerts[0] });
       const label = acao === 'salvarLote' ? 'Salvar lote do alerta 27' : 'Marcar alerta 27 como ciente';
@@ -117,6 +130,7 @@ for (const acao of ['salvarLote', 'marcarCiente']) {
         && nodes(x).some((child) => child.type === 'Text' && child.props.children.includes('Confirmar')));
       await button.props.onPress();
       tree = render();
+      conferirSemaforo(tree, [falhaAcao ? 'Críticos: 2' : 'Críticos: 0', 'Atenção: 1']);
       assert.deepEqual(calls, [27]);
       assert.deepEqual(nodes(tree).find((x) => x.type === 'FlatList').props.data.map((x) => x.id), falhaAcao ? [27, 28, 29] : [29]);
       assert.deepEqual(badges.at(-1), falhaAcao

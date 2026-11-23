@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { lotesApi } from '../services/api';
 import { CriticidadeLote } from '../types/apiTypes';
 import PrevisaoComprasSubScreen from './PrevisaoComprasSubScreen';
+import FiltrosCriticidade, { SemaforoCriticidade } from '../components/FiltrosCriticidade';
 import HistoricoComprasModal from '../components/HistoricoComprasModal';
 import { formatarData } from './alertasViewModel';
 
@@ -218,27 +219,17 @@ function EstoqueAtualContent() {
   return (
     <View style={styles.container}>
       <View style={styles.buscaLinha}><Ionicons name="search" color="#b8b8cc" size={18} /><TextInput value={busca} onChangeText={setBusca} placeholder="Buscar ingrediente..." placeholderTextColor="#8b8ba7" style={styles.buscaInput} accessibilityLabel="Buscar ingrediente" /></View>
-      <View style={styles.semaforo} accessibilityLabel={`${contagens.CRITICO} críticos, ${contagens.ATENCAO} em atenção, ${contagens.SAUDAVEL} saudáveis`}>
-        {[["CRITICO", "Críticos", "#ff5252"], ["ATENCAO", "Atenção", "#ffb74d"], ["SAUDAVEL", "Saudáveis", "#00e676"]].map(([tipo, rotulo, cor]) =>
-          <View key={tipo} style={styles.semaforoItem}><View style={[styles.semaforoPonto, { backgroundColor: cor }]} /><Text style={styles.semaforoTexto}>{rotulo}: {contagens[tipo]}</Text></View>)}
-      </View>
-      <View style={styles.filterRow}>
-        {['TODOS', 'CRITICO', 'ATENCAO', 'SAUDAVEL'].map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterChip, { borderColor: { TODOS: '#6c63ff', CRITICO: '#ff5252', ATENCAO: '#ffb74d', SAUDAVEL: '#00e676' }[f] }, filtro === f && styles.filterChipActive,
-              filtro === f && { backgroundColor: { TODOS: '#6c63ff33', CRITICO: '#ff525233', ATENCAO: '#ffb74d33', SAUDAVEL: '#00e67633' }[f] }]}
-            onPress={() => setFiltro(f)}
-            accessibilityRole="button"
-            accessibilityLabel={`Filtrar ${f === 'TODOS' ? 'todos' : f === 'CRITICO' ? 'críticos' : f === 'ATENCAO' ? 'atenção' : 'saudáveis'}`}
-            accessibilityState={{ selected: filtro === f }}
-          >
-            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={[styles.filterChipText, filtro === f && styles.filterChipTextActive]}>
-              {f === 'TODOS' ? `Todos (${contagens.TODOS})` : f === 'CRITICO' ? 'Críticos' : f === 'ATENCAO' ? 'Atenção' : 'Saudáveis'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <SemaforoCriticidade contagens={contagens} incluirSaudaveis />
+      <FiltrosCriticidade
+        opcoes={[
+          { valor: 'TODOS', rotulo: 'todos', texto: `Todos (${contagens.TODOS})` },
+          { valor: 'CRITICO', rotulo: 'críticos', texto: 'Críticos' },
+          { valor: 'ATENCAO', rotulo: 'atenção', texto: 'Atenção' },
+          { valor: 'SAUDAVEL', rotulo: 'saudáveis', texto: 'Saudáveis' },
+        ]}
+        selecionado={filtro}
+        onSelecionar={setFiltro}
+      />
 
       {avisoAtualizacao ? (
         <View style={styles.refreshWarning}>
@@ -362,44 +353,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     marginLeft: 8,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 8,
-    paddingVertical: 12,
-    backgroundColor: '#14142b',
-    borderBottomWidth: 1,
-    borderBottomColor: '#252545',
-  },
-  semaforo: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, paddingTop: 12, paddingBottom: 2, paddingHorizontal: 8, backgroundColor: '#14142b' },
-  semaforoItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  semaforoPonto: { width: 8, height: 8, borderRadius: 4 },
-  semaforoTexto: { color: '#c5c5d8', fontSize: 11 },
-  filterChip: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 4,
-    minHeight: 44,
-    justifyContent: 'center',
-    borderRadius: 20,
-    backgroundColor: '#1f1f3a',
-    marginHorizontal: 2,
-    borderWidth: 1,
-    borderColor: '#303055',
-  },
-  filterChipActive: {
-    backgroundColor: '#5b50dc',
-    borderColor: '#6c63ff',
-  },
-  filterChipText: {
-    color: '#8b8ba7',
-    fontSize: 12,
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  filterChipTextActive: {
-    color: '#ffffff',
-    fontWeight: 'bold',
   },
   refreshWarning: {
     alignItems: 'center',

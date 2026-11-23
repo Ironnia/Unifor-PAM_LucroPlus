@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import FiltrosCriticidade, { SemaforoCriticidade } from '../components/FiltrosCriticidade';
 import PromocoesScreen from './PromocoesScreen';
 import { alertasApi, lotesApi } from '../services/api';
 import { impactoLeve, impactoSucesso, notificarLoteCritico } from '../services/nativeService';
@@ -163,13 +164,16 @@ export default function AlertasScreen({ onCountChange }) {
       {aba === 'ALERTAS' ? (
         <>
           <Text style={styles.legenda}>Transforme risco em oportunidade de venda</Text>
-          <View style={styles.filtros}>
-            {FILTROS_ALERTA.map((valor) => (
-              <TouchableOpacity key={valor} style={[styles.filtro, filtro === valor && styles.filtroAtivo]} onPress={() => setFiltro(valor)} accessibilityRole="button" accessibilityLabel={`Filtrar ${rotuloFiltro[valor]}`} accessibilityState={{ selected: filtro === valor }}>
-                <Text style={[styles.filtroTexto, filtro === valor && styles.filtroTextoAtivo]}>{rotuloFiltro[valor]} ({contagens[valor]})</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <SemaforoCriticidade contagens={contagens} />
+          <FiltrosCriticidade
+            opcoes={FILTROS_ALERTA.map((valor) => ({
+              valor,
+              rotulo: rotuloFiltro[valor],
+              texto: rotuloFiltro[valor],
+            }))}
+            selecionado={filtro}
+            onSelecionar={setFiltro}
+          />
           {feedback ? <Text accessibilityRole="alert" style={styles.sucesso}>{feedback}</Text> : null}
           {aviso ? <Text accessibilityRole="alert" style={styles.aviso}>{aviso}</Text> : null}
           {carregando ? <View style={styles.centro}><ActivityIndicator color="#6c63ff" /><Text style={styles.detalhe}>Carregando alertas...</Text></View> : erro ? (
@@ -211,11 +215,6 @@ const styles = StyleSheet.create({
   aba: { flex: 1, alignItems: 'center', paddingVertical: 14 },
   abaAtiva: { borderBottomWidth: 2, borderBottomColor: '#8f89ff' },
   abaTexto: { color: '#fff', fontWeight: '600', fontSize: 13 },
-  filtros: { flexDirection: 'row', padding: 12, gap: 8 },
-  filtro: { flex: 1, alignItems: 'center', backgroundColor: '#20203c', borderRadius: 20, paddingHorizontal: 3, minHeight: 44, justifyContent: 'center' },
-  filtroAtivo: { backgroundColor: '#5b50dc' },
-  filtroTexto: { color: '#b8b8cc', fontSize: 12, textAlign: 'center' },
-  filtroTextoAtivo: { color: '#fff', fontWeight: 'bold' },
   lista: { padding: 14, flexGrow: 1 },
   card: { backgroundColor: '#1a1a33', borderColor: '#303055', borderWidth: 1, borderRadius: 12, padding: 15, marginBottom: 12 },
   cardHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },

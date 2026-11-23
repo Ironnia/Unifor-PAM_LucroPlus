@@ -4,8 +4,8 @@ const path = require('node:path');
 const test = require('node:test');
 
 function propriedade(tela, estilo, nome) {
-  const fonte = fs.readFileSync(path.join(__dirname, '..', 'src', 'screens', tela), 'utf8');
-  const bloco = fonte.match(new RegExp(`\\b${estilo}:\\s*\\{([^}]*)\\}`));
+  const fonte = fs.readFileSync(path.join(__dirname, '..', 'src', tela), 'utf8');
+  const bloco = fonte.match(new RegExp(`\\b${estilo}\\s*[:=]\\s*\\{([^}]*)\\}`));
   assert.ok(bloco, `${tela}: estilo ${estilo} não encontrado`);
   const valor = bloco[1].match(new RegExp(`\\b${nome}:\\s*['\"](#[0-9a-fA-F]{3,6})['\"]`));
   assert.ok(valor, `${tela}: ${estilo}.${nome} não encontrado`);
@@ -30,20 +30,17 @@ function contraste(frente, fundo) {
 }
 
 const pares = [
-  ['HomeScreen.js', 'comparacao', 'card'],
-  ['HomeScreen.js', 'impactoRotulo', 'card'],
-  ['HomeScreen.js', 'dia', 'graficoCard'],
-  ['HomeScreen.js', 'syncRotulo', 'syncCard'],
-  ['HomeScreen.js', 'syncBotaoTexto', 'syncBotao'],
-  ['AlertasScreen.js', 'filtroTexto', 'filtro'],
-  ['AlertasScreen.js', 'filtroTextoAtivo', 'filtroAtivo'],
-  ['AlertasScreen.js', 'botaoTexto', 'salvar'],
-  ['EstoqueScreen.js', 'filterChipText', 'filterChip'],
-  ['EstoqueScreen.js', 'filterChipTextActive', 'filterChipActive'],
-  ['RankingScreen.js', 'comparacao', 'card'],
-  ['BcgScreen.js', 'secaoVazia', 'cardVazio'],
-  ['PerfilScreen.js', 'version', 'container'],
-  ['PromocoesScreen.js', 'botaoTexto', 'botao'],
+  ['components/FiltrosCriticidade.js', 'texto', 'botao'],
+  ['screens/HomeScreen.js', 'comparacao', 'card'],
+  ['screens/HomeScreen.js', 'impactoRotulo', 'card'],
+  ['screens/HomeScreen.js', 'dia', 'graficoCard'],
+  ['screens/HomeScreen.js', 'syncRotulo', 'syncCard'],
+  ['screens/HomeScreen.js', 'syncBotaoTexto', 'syncBotao'],
+  ['screens/AlertasScreen.js', 'botaoTexto', 'salvar'],
+  ['screens/RankingScreen.js', 'comparacao', 'card'],
+  ['screens/BcgScreen.js', 'secaoVazia', 'cardVazio'],
+  ['screens/PerfilScreen.js', 'version', 'container'],
+  ['screens/PromocoesScreen.js', 'botaoTexto', 'botao'],
 ];
 
 for (const [tela, texto, fundo] of pares) {
@@ -54,3 +51,18 @@ for (const [tela, texto, fundo] of pares) {
     assert.ok(razao >= 4.5, `${corTexto} sobre ${corFundo}: ${razao.toFixed(2)}:1`);
   });
 }
+
+test('filtros de criticidade mantêm contraste AA em todos os preenchimentos ativos', () => {
+  const componente = 'components/FiltrosCriticidade.js';
+  const texto = propriedade(componente, 'textoAtivo', 'color');
+  const base = propriedade(componente, 'linha', 'backgroundColor');
+  for (const filtro of ['TODOS', 'CRITICO', 'ATENCAO', 'SAUDAVEL']) {
+    const cor = propriedade(componente, 'cores', filtro);
+    const fundo = '#' + [1, 3, 5].map((i) => {
+      const principal = parseInt(cor.slice(i, i + 2), 16);
+      const baseCanal = parseInt(base.slice(i, i + 2), 16);
+      return Math.round(0.2 * principal + 0.8 * baseCanal).toString(16).padStart(2, '0');
+    }).join('');
+    assert.ok(contraste(texto, fundo) >= 4.5, `${filtro}: ${texto} sobre ${fundo}`);
+  }
+});
