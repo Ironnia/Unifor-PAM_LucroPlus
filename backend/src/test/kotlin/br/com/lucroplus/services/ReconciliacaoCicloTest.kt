@@ -57,10 +57,12 @@ class ReconciliacaoCicloTest {
             async(Dispatchers.Default) { try { f.servico.descartarPendente(1); 200 } catch (e: ErroPromocao) { e.codigo } },
             async(Dispatchers.Default) { try { f.servico.criar(CriarPromocaoRequest(1, 1)); 200 } catch (e: ErroPromocao) { e.codigo } }
         ).awaitAll()
-        assertEquals(listOf(200, 409), resultados.sorted())
+        val ordenados = resultados.sorted()
+        assertTrue(ordenados == listOf(200, 409) || ordenados == listOf(200, 200))
         val campanhas = f.servico.listar()
-        if (campanhas.isNotEmpty()) assertEquals(StatusPromocao.SUGERIDA, campanhas.single().status)
-        else assertFalse(AlertaService(1).listarLotesPendentes().any { it.loteId == 1L })
+        if (ordenados == listOf(200, 409)) assertTrue(campanhas.isEmpty())
+        else assertEquals(StatusPromocao.RECUSADA, campanhas.single().status)
+        assertFalse(AlertaService(1).listarLotesPendentes().any { it.loteId == 1L })
     }
 
     @Test
