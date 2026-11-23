@@ -12,16 +12,6 @@ dist
 dist-ssr
 *.local
 
-# Capacitor / Android (gerados)
-android/app/build
-android/build
-android/.gradle
-android/local.properties
-android/app/src/main/assets/public
-android/app/src/main/assets/capacitor.config.json
-android/capacitor.settings.gradle
-android/app/capacitor.build.gradle
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

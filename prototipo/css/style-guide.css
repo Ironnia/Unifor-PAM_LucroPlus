@@ -1,0 +1,63 @@
+/* ==========================================================================
+   STYLE GUIDE - LucroPlus (Design Tokens)
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+
+:root {
+    /* Paleta de Cores Base (Dark Theme) */
+    --bg-app: #0B0F19;
+    --bg-surface: #141C2B;
+    --bg-surface-hover: #1E293B;
+    --border-color: #2A3441;
+
+    /* Cores de Marca e Ação */
+    --primary: #10B981;          /* Verde principal */
+    --primary-dark: #059669;
+    --primary-gradient: linear-gradient(135deg, #22C55E 0%, #10B981 100%);
+    --primary-transparent: rgba(16, 185, 129, 0.15); /* Para fundos de botões/cards */
+    
+    /* Tipografia (Cores) */
+    --text-primary: #FFFFFF;
+    --text-secondary: #94A3B8;
+    
+    /* Status e Categorias (BCG e Alertas) */
+    --color-estrela: #F59E0B;        /* Amarelo/Dourado */
+    --color-estrela-bg: rgba(245, 158, 11, 0.15);
+    
+    --color-burro: #3B82F6;          /* Azul */
+    --color-burro-bg: rgba(59, 130, 246, 0.15);
+    
+    --color-quebra-cabeca: #A855F7;  /* Roxo */
+    --color-quebra-cabeca-bg: rgba(168, 85, 247, 0.15);
+    
+    --color-cao: #6B7280;            /* Cinza */
+    --color-cao-bg: rgba(107, 114, 128, 0.15);
+    
+    --color-danger: #EF4444;         /* Vermelho/Laranja (Crítico) */
+    --color-danger-bg: rgba(239, 68, 68, 0.15);
+
+    --color-success: #10B981;        /* Verde (Salvos) */
+    --color-success-bg: rgba(16, 185, 129, 0.15);
+    
+    /* Tipografia (Famílias e Tamanhos) */
+    --font-main: 'Inter', sans-serif;
+    --font-accent: 'Space Grotesk', sans-serif;
+    
+    --text-xs: 0.75rem;   /* 12px */
+    --text-sm: 0.875rem;  /* 14px */
+    --text-md: 1rem;      /* 16px */
+    --text-lg: 1.125rem;  /* 18px */
+    --text-xl: 1.5rem;    /* 24px */
+    --text-2xl: 2rem;     /* 32px */
+
+    /* Espaçamentos e Bordas */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-pill: 999px;
+    
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+}

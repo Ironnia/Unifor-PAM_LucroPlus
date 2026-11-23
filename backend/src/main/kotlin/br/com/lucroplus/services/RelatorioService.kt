@@ -6,14 +6,13 @@ import br.com.lucroplus.database.LotesTable
 import br.com.lucroplus.models.DesperdicioHistoricoDto
 import br.com.lucroplus.models.DesperdicioIngredienteDto
 import kotlinx.datetime.toKotlinLocalDate
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.*
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
 import java.time.Month
 
-object RelatorioService {
+class RelatorioService(private val restauranteId: Long) {
 
     suspend fun obterDesperdicioMesAtual(): List<DesperdicioIngredienteDto> = dbQuery {
         val hojeJava = LocalDate.now()
@@ -24,16 +23,16 @@ object RelatorioService {
 
         val lotesVencidosMes = (LotesTable innerJoin IngredientesTable)
             .selectAll()
-            .where { (LotesTable.dataValidade less hojeKmp) and (LotesTable.dataValidade greaterEq primeiroDiaMesKmp) }
+            .where { (IngredientesTable.restauranteId eq restauranteId) and (LotesTable.restauranteId eq restauranteId) and ((LotesTable.dataValidade less hojeKmp) and (LotesTable.dataValidade greaterEq primeiroDiaMesKmp)) }
             .toList()
 
         lotesVencidosMes
             .groupBy { it[IngredientesTable.nome] to it[IngredientesTable.unidade] }
             .map { (key, lotesDoIngrediente) ->
                 val (ingrediente, unidade) = key
-                val quantidadePerdida = lotesDoIngrediente.sumOf { it[LotesTable.quantidade].toDouble() }.roundTo(3)
+                val quantidadePerdida = lotesDoIngrediente.sumOf { it[LotesTable.quantidadeG].toDouble() }.roundTo(3)
                 val valorPerdidoRs = lotesDoIngrediente.sumOf {
-                    it[LotesTable.quantidade].toDouble() * it[LotesTable.custoUnitario].toDouble()
+                    it[LotesTable.quantidadeG].toDouble() * it[LotesTable.custoUnitario].toDouble()
                 }.roundTo(2)
 
                 DesperdicioIngredienteDto(
@@ -54,7 +53,7 @@ object RelatorioService {
 
         val lotesVencidos = LotesTable
             .selectAll()
-            .where { (LotesTable.dataValidade less hojeKmp) and (LotesTable.dataValidade greaterEq seisMesesAtrasKmp) }
+            .where { (LotesTable.restauranteId eq restauranteId) and ((LotesTable.dataValidade less hojeKmp) and (LotesTable.dataValidade greaterEq seisMesesAtrasKmp)) }
             .toList()
 
         val perdasPorMes = lotesVencidos
@@ -63,7 +62,7 @@ object RelatorioService {
                 data.year to data.month
             }
             .mapValues { (_, lotes) ->
-                lotes.sumOf { it[LotesTable.quantidade].toDouble() * it[LotesTable.custoUnitario].toDouble() }.roundTo(2)
+                lotes.sumOf { it[LotesTable.quantidadeG].toDouble() * it[LotesTable.custoUnitario].toDouble() }.roundTo(2)
             }
 
         val resultado = mutableListOf<DesperdicioHistoricoDto>()

@@ -1,0 +1,293 @@
+{
+  "info": {
+    "_postman_id": "lucroplus-sprint-2-collection",
+    "name": "LucroPlus API — Sprint 2 Suite",
+    "description": "Suíte oficial de testes automatizados da Sprint 2 do LucroPlus (Unifor PAM - N393). Responsável: Emanuel Sales (QA/Testes). Cobre Autenticação JWT, Gestão de Lotes de Estoque e Teste de Conexão com PDV.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Health Check (API Viva)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/",
+          "host": ["{{baseUrl}}"],
+          "path": [""]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code é 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Tempo de resposta é inferior a 500ms', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(500);",
+              "});",
+              "pm.test('API responde status ok', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.status).to.eql('ok');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Auth: Login com Credenciais Válidas",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"gerente@lucroplus.com\",\n  \"senha\": \"gerente123\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "login"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code é 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Retorna token JWT e salva na variável global', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.token).to.be.a('string').and.not.empty;",
+              "    pm.collectionVariables.set('token', jsonData.token);",
+              "});",
+              "pm.test('Tempo de resposta é inferior a 500ms', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(500);",
+              "});",
+              "pm.test('Perfil retornado é GERENTE', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.tipo).to.eql('GERENTE');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Auth: Login com Credenciais Inválidas (Falha 401)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"gerente@lucroplus.com\",\n  \"senha\": \"senha_errada_999\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "login"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code é 401 Unauthorized', function () {",
+              "    pm.response.to.have.status(401);",
+              "});",
+              "pm.test('Retorna mensagem de erro formatada', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.erro).to.be.a('string');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Auth: Obter Perfil do Usuário Conectado (/auth/me)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "me"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code é 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Retorna nome e email do perfil autenticado', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.nome).to.be.a('string');",
+              "    pm.expect(jsonData.email).to.be.a('string');",
+              "});",
+              "pm.test('Tempo de resposta é inferior a 500ms', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(500);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Auth: Acesso sem Token Bloqueado (401)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/auth/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "me"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code é 401 Unauthorized ao omitir token', function () {",
+              "    pm.response.to.have.status(401);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Lotes: Listagem Consolidada com Criticidade (/lotes)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/lotes",
+          "host": ["{{baseUrl}}"],
+          "path": ["lotes"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code é 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Retorna lista não vazia de lotes de insumos', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.be.an('array').and.not.empty;",
+              "});",
+              "pm.test('Cada lote possui quantidadeG, diasRestantes e criticidade', function () {",
+              "    var jsonData = pm.response.json();",
+              "    var primeiro = jsonData[0];",
+              "    pm.expect(primeiro).to.have.property('quantidadeG');",
+              "    pm.expect(primeiro).to.have.property('diasRestantes');",
+              "    pm.expect(primeiro).to.have.property('criticidade');",
+              "    pm.expect(['CRITICO', 'ATENCAO', 'SEGURO']).to.include(primeiro.criticidade);",
+              "});",
+              "pm.test('Tempo de resposta é inferior a 500ms', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(500);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - PDV: Teste de Conectividade JDBC (/configuracoes/pdv/testar-conexao)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"url\": \"jdbc:mysql://localhost:3306/pdv_simulado?serverTimezone=UTC\",\n  \"username\": \"mock\",\n  \"password\": \"\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/configuracoes/pdv/testar-conexao",
+          "host": ["{{baseUrl}}"],
+          "path": ["configuracoes", "pdv", "testar-conexao"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code é 200 OK', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Retorna sucesso e tempo de resposta em milissegundos', function () {",
+              "    var jsonData = pm.response.json();",
+              "    pm.expect(jsonData.sucesso).to.be.a('boolean');",
+              "    pm.expect(jsonData.tempoRespostaMs).to.be.a('number');",
+              "    pm.expect(jsonData.mensagem).to.be.a('string');",
+              "});",
+              "pm.test('Tempo total da requisição é inferior a 1000ms', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}

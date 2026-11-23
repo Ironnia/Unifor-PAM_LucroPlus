@@ -1,33 +1,56 @@
 package br.com.lucroplus.routes
 
+import br.com.lucroplus.security.restauranteAutenticado
 import br.com.lucroplus.models.ErrorResponse
 import br.com.lucroplus.models.MessageResponse
+import br.com.lucroplus.services.AcaoAlerta
+import br.com.lucroplus.services.AlertaOperacoes
 import br.com.lucroplus.services.AlertaService
+import br.com.lucroplus.services.ResultadoAcaoAlerta
 import io.ktor.http.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Route.alertaRoutes() {
-    route("/alertas") {
-        get("/vencimento") {
-            val alertas = AlertaService.obterAlertasVencimento()
-            call.respond(HttpStatusCode.OK, alertas)
-        }
-
-        patch("/{id}/visualizar") {
-            val idParam = call.parameters["id"]?.toLongOrNull()
-            if (idParam == null) {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse("ID de alerta inválido"))
-                return@patch
+fun Route.alertaRoutes(operacoes: AlertaOperacoes? = null) {
+    authenticate("auth-jwt") {
+        route("/alertas") {
+            get("/vencimento") {
+                val restauranteId = call.restauranteAutenticado() ?: return@get
+                call.respond(HttpStatusCode.OK, (operacoes ?: AlertaService(restauranteId)).obterAlertasVencimento())
             }
-
-            val sucesso = AlertaService.marcarComoVisualizado(idParam)
-            if (sucesso) {
-                call.respond(HttpStatusCode.OK, MessageResponse("Alerta marcado como visualizado"))
-            } else {
-                call.respond(HttpStatusCode.NotFound, ErrorResponse("Alerta não encontrado"))
+            patch("/{id}/salvar-lote") {
+                val restauranteId = call.restauranteAutenticado() ?: return@patch
+                call.responderAcao(operacoes ?: AlertaService(restauranteId), AcaoAlerta.SALVAR_LOTE)
+            }
+            patch("/{id}/ciente") {
+                val restauranteId = call.restauranteAutenticado() ?: return@patch
+                call.responderAcao(operacoes ?: AlertaService(restauranteId), AcaoAlerta.CIENTE)
+            }
+            patch("/{id}/visualizar") {
+                val restauranteId = call.restauranteAutenticado() ?: return@patch
+                call.responderAcao(operacoes ?: AlertaService(restauranteId), AcaoAlerta.CIENTE)
             }
         }
+    }
+}
+
+private suspend fun ApplicationCall.responderAcao(operacoes: AlertaOperacoes, acao: AcaoAlerta) {
+    val id = parameters["id"]?.toLongOrNull()?.takeIf { it > 0 }
+    if (id == null) {
+        respond(HttpStatusCode.BadRequest, ErrorResponse("ID de alerta inválido"))
+        return
+    }
+    when (operacoes.executarAcao(id, acao)) {
+        ResultadoAcaoAlerta.CONCLUIDA, ResultadoAcaoAlerta.JA_APLICADA ->
+            respond(HttpStatusCode.OK, MessageResponse(
+                if (acao == AcaoAlerta.SALVAR_LOTE) "Lote salvo na fila de promoções pendentes"
+                else "Alerta marcado como ciente"
+            ))
+        ResultadoAcaoAlerta.CONFLITO ->
+            respond(HttpStatusCode.Conflict, ErrorResponse("O alerta já foi resolvido ou o lote não está ativo"))
+        ResultadoAcaoAlerta.NAO_ENCONTRADO ->
+            respond(HttpStatusCode.NotFound, ErrorResponse("Alerta não encontrado"))
     }
 }
