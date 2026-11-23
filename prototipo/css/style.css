@@ -1,0 +1,228 @@
+/* ==========================================================================
+   ESTILOS GERAIS E ESTRUTURA
+   ========================================================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    font-family: var(--font-main);
+    font-size: var(--text-md);
+    line-height: 1.5;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* Utilitários */
+.font-accent { font-family: var(--font-accent); }
+.text-gradient-primary {
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.text-secondary { color: var(--text-secondary); }
+
+/* Moldura do App */
+.app-container {
+    width: 100%;
+    max-width: 400px;
+    height: 100vh;
+    max-height: 850px;
+    background-color: var(--bg-app);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 400px) {
+    .app-container {
+        max-width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+        border: none;
+    }
+}
+
+#app-content {
+    flex: 1;
+    overflow-y: auto; 
+    padding: var(--space-6);
+    padding-bottom: 90px;
+}
+#app-content::-webkit-scrollbar { display: none; }
+
+/* ==========================================================================
+   COMPONENTES DO DASHBOARD
+   ========================================================================== */
+
+/* Header Superior */
+.top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-6);
+}
+.top-header h1 {
+    font-size: var(--text-xl);
+    font-weight: 700;
+}
+.top-header i {
+    font-size: 24px;
+    color: var(--text-secondary);
+}
+
+/* Cards Base */
+.card {
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+    border: 1px solid var(--border-color);
+}
+
+/* Card Faturamento Específico (borda esverdeada) */
+.card-faturamento {
+    border-color: rgba(16, 185, 129, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+.card-faturamento .subtitle {
+    font-size: 10px;
+    color: var(--text-secondary);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+.card-faturamento .value {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.card-faturamento .comparison {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+}
+.card-faturamento .comparison span {
+    color: var(--primary);
+}
+
+/* Grid de Pílulas (Salvos, Críticos, Promoções) */
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+}
+
+.status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: var(--radius-pill);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.status-pill i { font-size: 16px; }
+
+.pill-success {
+    background-color: var(--color-success-bg);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--color-success);
+}
+.pill-danger {
+    background-color: var(--color-danger-bg);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: var(--color-danger);
+}
+.pill-warning {
+    background-color: var(--color-estrela-bg);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: var(--color-estrela);
+}
+
+/* Botão Sincronizar */
+.btn-outline {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: var(--space-3);
+    border-radius: var(--radius-pill);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+.btn-outline:active {
+    background-color: var(--primary-transparent);
+}
+
+/* ==========================================================================
+   BOTTOM NAVIGATION
+   ========================================================================== */
+.bottom-nav {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%; height: 72px;
+    background-color: var(--bg-surface);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 100;
+}
+.nav-item {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    font-weight: 500; gap: 4px;
+}
+.nav-item i { font-size: 24px; }
+.nav-item.active { color: var(--primary); }
+.icon-wrapper { position: relative; }
+.badge {
+    position: absolute; top: -4px; right: -6px;
+    background-color: var(--color-danger); color: #FFF;
+    font-size: 10px; font-weight: 700; width: 16px; height: 16px;
+    border-radius: var(--radius-pill); display: flex;
+    align-items: center; justify-content: center;
+    border: 2px solid var(--bg-surface);
+}
+
+/* ==========================================================================
+   GERENCIAMENTO DE VIEWS (Telas)
+   ========================================================================== */
+.view {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.view.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

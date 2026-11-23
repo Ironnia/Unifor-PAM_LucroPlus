@@ -1,0 +1,242 @@
+import React, { useCallback, useRef, useState } from 'react';
+import {
+  ActivityIndicator, Alert, FlatList, Modal, RefreshControl, StyleSheet, Text,
+  TouchableOpacity, View,
+} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import FiltrosCriticidade, { SemaforoCriticidade } from '../components/FiltrosCriticidade';
+import PromocoesScreen from './PromocoesScreen';
+import { alertasApi, lotesApi } from '../services/api';
+import { impactoLeve, impactoSucesso, notificarLoteCritico } from '../services/nativeService';
+import {
+  FILTROS_ALERTA, contarAlertas, contagemNavegacao, filtrarAlertas, formatarData,
+  formatarQuantidade, textoPrazo, validarListaAlertas,
+} from './alertasViewModel';
+
+const mensagemErro = (error, assunto) => {
+  if (error.message?.startsWith('Não foi possível conectar ao servidor.')) return error.message;
+  if (error.code === 'ECONNABORTED') return 'A API demorou para responder. Verifique a rede e tente novamente.';
+  if (error.message?.includes('formato inesperado')) return error.message;
+  if (error.response?.status === 409 || error.response?.status === 404) {
+    return 'Este alerta já mudou no servidor. Atualize a lista e tente novamente.';
+  }
+  return error.response?.data?.erro || `Não foi possível ${assunto}. Verifique a conexão e tente novamente.`;
+};
+
+const rotuloFiltro = { TODOS: 'Todos', CRITICO: 'Críticos', ATENCAO: 'Atenção' };
+
+
+
+
+
+export default function AlertasScreen({ onCountChange }) {
+  const jaCarregou = useRef(false);
+  const notificados = useRef(new Set());
+  const [aba, setAba] = useState('ALERTAS');
+  const [filtro, setFiltro] = useState('TODOS');
+  const [alertas, setAlertas] = useState([]);
+  const [numerosLote, setNumerosLote] = useState({});
+  const [carregando, setCarregando] = useState(true);
+  const [atualizando, setAtualizando] = useState(false);
+  const [erro, setErro] = useState('');
+  const [aviso, setAviso] = useState('');
+  const [confirmacao, setConfirmacao] = useState(null);
+  const [executando, setExecutando] = useState(false);
+  const [feedback, setFeedback] = useState('');
+
+  const carregarAlertas = useCallback(async ({ preservar = false, avisar = false } = {}) => {
+    setErro('');
+    setAviso('');
+    try {
+      const novos = validarListaAlertas(await alertasApi.getAtivos());
+      const lotes = await (lotesApi?.getLotes?.() || Promise.resolve([])).catch(() => []);
+      setNumerosLote(Object.fromEntries(lotes.map((lote) => [lote.id, lote.numeroLote])));
+       
+      for (const alerta of novos) {
+        const loteId = alerta.loteId ?? alerta.lote?.id ?? alerta.id;
+        if (alerta.criticidade !== 'CRITICO' || notificados.current.has(loteId)) continue;
+        notificados.current.add(loteId);
+        void notificarLoteCritico(alerta.lote?.ingrediente?.nome || 'não informado', alerta.diasParaPrazoLimite);
+      }
+      setAlertas(novos);
+      onCountChange?.(contagemNavegacao(novos));
+    } catch (error) {
+      const texto = mensagemErro(error, 'carregar os alertas');
+      if (avisar) Alert.alert('Não foi possível atualizar', texto);
+      if (preservar) setAviso(`${texto} Os dados anteriores foram mantidos.`);
+      else {
+        setAlertas([]);
+        onCountChange?.(contagemNavegacao([]));
+        setErro(texto);
+      }
+    } finally {
+      jaCarregou.current = true;
+      setCarregando(false);
+      setAtualizando(false);
+    }
+  }, [onCountChange]);
+
+  useFocusEffect(useCallback(() => {
+    carregarAlertas({ preservar: jaCarregou.current });
+  }, [carregarAlertas]));
+
+  const atualizar = () => {
+    setAtualizando(true);
+    carregarAlertas({ preservar: true, avisar: true });
+  };
+
+  const executarAcao = async () => {
+    if (!confirmacao || executando) return;
+    const { alerta, acao } = confirmacao;
+    void impactoLeve();
+    setExecutando(true);
+    setFeedback('');
+    try {
+      if (acao === 'SALVAR') await alertasApi.salvarLote(alerta.id);
+      else await alertasApi.marcarCiente(alerta.id);
+
+       
+      const restantes = alertas.filter((item) =>
+        item.loteId !== alerta.loteId || item.tipo !== alerta.tipo);
+      setAlertas(restantes);
+      onCountChange?.(contagemNavegacao(restantes));
+      setConfirmacao(null);
+      setFeedback(acao === 'SALVAR'
+        ? 'Lote salvo. Consulte a aba Promoções pendentes.'
+        : 'Alerta marcado como ciente.');
+      void impactoSucesso();
+      await carregarAlertas({ preservar: true });
+    } catch (error) {
+      setConfirmacao(null);
+      setAviso(mensagemErro(error, 'concluir a ação'));
+    } finally {
+      setExecutando(false);
+    }
+  };
+
+  const contagens = contarAlertas(alertas);
+  const visiveis = filtrarAlertas(alertas, filtro);
+
+  const renderAlerta = ({ item }) => {
+    const critico = item.criticidade === 'CRITICO';
+    const cor = critico ? '#ff6868' : '#ffbf69';
+    return (
+      <View style={[styles.card, { borderColor: cor }]}>
+        <View style={styles.cardHeading}>
+          <Text style={styles.ingrediente}>{item.lote?.ingrediente?.nome || 'Ingrediente não informado'}</Text>
+          <Text style={[styles.status, { color: cor, borderColor: cor }]}><Ionicons name={critico ? 'alert-circle' : 'warning'} size={12} color={cor} /> {textoPrazo(item.diasParaPrazoLimite)}</Text>
+        </View>
+        <Text style={styles.referencia}>Lote #{String(numerosLote[item.loteId] || item.loteId || item.lote?.id || '—').replace(/^#/, '')}</Text>
+        <View style={styles.divisor} />
+        <View style={styles.metricas}><View><Text style={styles.metricaRotulo}>Estoque Atual</Text><Text style={styles.metricaValor}>{formatarQuantidade(item.lote?.quantidade)}</Text></View><View><Text style={styles.metricaRotulo}>Prazo Limite</Text><Text style={styles.metricaValor}>{formatarData(item.prazoLimiteVenda)}</Text></View></View>
+        <View style={styles.acoes}>
+          <TouchableOpacity
+            style={[styles.botao, styles.salvar]}
+            onPress={() => setConfirmacao({ alerta: item, acao: 'SALVAR' })}
+            disabled={executando}
+            accessibilityRole="button"
+            accessibilityLabel={`Salvar lote do alerta ${item.id}`}
+          ><Text style={styles.botaoTexto}>Salvar Lote</Text></TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.botao, styles.ciente]}
+            onPress={() => setConfirmacao({ alerta: item, acao: 'CIENTE' })}
+            disabled={executando}
+            accessibilityRole="button"
+            accessibilityLabel={`Marcar alerta ${item.id} como ciente`}
+          ><Text style={styles.botaoTexto}>Marcar Ciente</Text></TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.abas}>
+        <TouchableOpacity style={[styles.aba, aba === 'ALERTAS' && styles.abaAtiva]} onPress={() => setAba('ALERTAS')} accessibilityRole="tab" accessibilityLabel="Alertas" accessibilityState={{ selected: aba === 'ALERTAS' }}>
+          <Text style={styles.abaTexto}>Alertas {contagens.TODOS > 0 ? `(${contagens.TODOS})` : ''}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.aba, aba === 'PROMOCOES' && styles.abaAtiva]} onPress={() => setAba('PROMOCOES')} accessibilityRole="tab" accessibilityLabel="Promoções" accessibilityState={{ selected: aba === 'PROMOCOES' }}>
+          <Text style={styles.abaTexto}>Promoções</Text>
+        </TouchableOpacity>
+      </View>
+
+      {aba === 'ALERTAS' ? (
+        <>
+          <Text style={styles.legenda}>Transforme risco em oportunidade de venda</Text>
+          <SemaforoCriticidade contagens={contagens} />
+          <FiltrosCriticidade
+            opcoes={FILTROS_ALERTA.map((valor) => ({
+              valor,
+              rotulo: rotuloFiltro[valor],
+              texto: rotuloFiltro[valor],
+            }))}
+            selecionado={filtro}
+            onSelecionar={setFiltro}
+          />
+          {feedback ? <Text accessibilityRole="alert" style={styles.sucesso}>{feedback}</Text> : null}
+          {aviso ? <Text accessibilityRole="alert" style={styles.aviso}>{aviso}</Text> : null}
+          {carregando ? <View style={styles.centro}><ActivityIndicator color="#6c63ff" /><Text style={styles.detalhe}>Carregando alertas...</Text></View> : erro ? (
+            <View style={styles.centro}><Text style={styles.tituloVazio}>Falha ao carregar alertas</Text><Text style={styles.detalhe}>{erro}</Text><TouchableOpacity style={styles.tentar} onPress={() => { setCarregando(true); carregarAlertas(); }} accessibilityRole="button" accessibilityLabel="Tentar carregar alertas novamente"><Text style={styles.botaoTexto}>Tentar novamente</Text></TouchableOpacity></View>
+          ) : (
+            <FlatList data={visiveis} keyExtractor={(item) => String(item.id)} renderItem={renderAlerta} contentContainerStyle={styles.lista}
+              refreshControl={<RefreshControl refreshing={atualizando} onRefresh={atualizar} tintColor="#6c63ff" />}
+              ListEmptyComponent={<View style={styles.centro}><Ionicons name="checkmark-circle-outline" size={42} color="#8b8ba7" /><Text style={styles.tituloVazio}>{alertas.length ? 'Nenhum alerta neste filtro' : 'Nenhum alerta ativo'}</Text><Text style={styles.detalhe}>{alertas.length ? 'Selecione outro filtro para ver os demais alertas.' : 'Os lotes dentro do prazo de risco aparecerão aqui.'}</Text></View>}
+            />
+          )}
+        </>
+      ) : <PromocoesScreen />}
+
+      <Modal visible={Boolean(confirmacao)} transparent animationType="fade" onRequestClose={() => !executando && setConfirmacao(null)}>
+        <View style={styles.sombra}><View style={styles.modal}>
+          <Text style={styles.modalTitulo}>{confirmacao?.acao === 'SALVAR' ? 'Salvar este lote?' : 'Marcar como ciente?'}</Text>
+          <Text style={styles.modalTexto}>{confirmacao?.acao === 'SALVAR'
+            ? 'O alerta sairá da lista e o lote entrará em Promoções pendentes.'
+            : 'O alerta sairá da lista sem entrar na fila de promoções.'}</Text>
+          <View style={styles.acoes}>
+            <TouchableOpacity style={[styles.botao, styles.ciente]} onPress={() => setConfirmacao(null)} disabled={executando} accessibilityRole="button" accessibilityLabel="Cancelar ação do alerta"><Text style={styles.botaoTexto}>Cancelar</Text></TouchableOpacity>
+            <TouchableOpacity style={[styles.botao, styles.salvar]} onPress={executarAcao} disabled={executando} accessibilityRole="button" accessibilityLabel={confirmacao?.acao === 'SALVAR' ? 'Confirmar Salvar Lote' : 'Confirmar Marcar Ciente'}>{executando ? <ActivityIndicator color="#fff" /> : <Text style={styles.botaoTexto}>Confirmar</Text>}</TouchableOpacity>
+          </View>
+        </View></View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  legenda: { color: '#b8b8cc', fontSize: 13, paddingHorizontal: 14, paddingTop: 12, textAlign: 'center' },
+  referencia: { color: '#b8b8cc', fontSize: 12, marginTop: 5 },
+  divisor: { height: 1, backgroundColor: '#303055', marginTop: 13 },
+  metricas: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12 },
+  metricaRotulo: { color: '#9292ad', fontSize: 11 },
+  metricaValor: { color: '#fff', fontSize: 13, fontWeight: 'bold', marginTop: 3 },
+  container: { flex: 1, backgroundColor: '#0f0f23' },
+  abas: { flexDirection: 'row', backgroundColor: '#17172f', borderBottomWidth: 1, borderBottomColor: '#303055' },
+  aba: { flex: 1, alignItems: 'center', paddingVertical: 14 },
+  abaAtiva: { borderBottomWidth: 2, borderBottomColor: '#8f89ff' },
+  abaTexto: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  lista: { padding: 14, flexGrow: 1 },
+  card: { backgroundColor: '#1a1a33', borderColor: '#303055', borderWidth: 1, borderRadius: 12, padding: 15, marginBottom: 12 },
+  cardHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  ingrediente: { color: '#fff', fontSize: 17, fontWeight: 'bold', flexShrink: 1 },
+  status: { fontSize: 10, fontWeight: 'bold', borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
+  detalhe: { color: '#b8b8cc', marginTop: 7, fontSize: 13, lineHeight: 19, textAlign: 'center' },
+  prazo: { color: '#e0e0ff', marginTop: 12, fontSize: 13 },
+  dias: { marginTop: 4, fontWeight: 'bold', fontSize: 12 },
+  acoes: { flexDirection: 'row', gap: 9, marginTop: 16 },
+  botao: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 8, paddingVertical: 10, minHeight: 44 },
+  salvar: { backgroundColor: '#5b50dc' },
+  ciente: { backgroundColor: '#34344f' },
+  botaoTexto: { color: '#fff', fontSize: 13, fontWeight: 'bold' },
+  centro: { alignItems: 'center', justifyContent: 'center', padding: 28, flex: 1 },
+  tituloVazio: { color: '#fff', fontWeight: 'bold', fontSize: 16, marginTop: 10, textAlign: 'center' },
+  tentar: { backgroundColor: '#5b50dc', padding: 11, borderRadius: 8, marginTop: 18, minHeight: 44, justifyContent: 'center' },
+  aviso: { color: '#ffcf82', backgroundColor: '#493822', padding: 11, fontSize: 13 },
+  sucesso: { color: '#c4f5d3', backgroundColor: '#234835', padding: 11, fontSize: 13 },
+  link: { textDecorationLine: 'underline', fontWeight: 'bold' },
+  pendente: { color: '#bcb7ff', marginTop: 8, fontSize: 12 },
+  sombra: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', padding: 24 },
+  modal: { backgroundColor: '#20203c', borderRadius: 14, padding: 20 },
+  modalTitulo: { color: '#fff', fontSize: 19, fontWeight: 'bold' },
+  modalTexto: { color: '#cccce0', marginTop: 10, lineHeight: 21 },
+});

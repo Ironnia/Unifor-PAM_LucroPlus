@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LucroPlus - Dashboard</title>
+    
+    <!-- Importando os dois arquivos na ordem correta -->
+    <link rel="stylesheet" href="css/style-guide.css">
+    <link rel="stylesheet" href="css/style.css">
+    
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+    
+    <div class="app-container">
+        
+        <main id="app-content">
+            
+            <!-- TELA 1: INÍCIO (DASHBOARD) -->
+            <section id="inicio" class="view active">
+                <!-- Cabeçalho -->
+                <header class="top-header">
+                    <h1>LucroPlus</h1>
+                    <i class="ph ph-gear"></i>
+                </header>
+
+                <!-- Card de Faturamento -->
+                <section class="card card-faturamento">
+                    <p class="subtitle font-accent">FATURAMENTO</p>
+                    <h2 class="value text-gradient-primary">R$ 42.500</h2>
+                    <p class="comparison">Agosto 2026 | <span>↑ 12% vs Jul</span></p>
+                </section>
+
+                <!-- Grid de Status (Pílulas) -->
+                <section class="status-grid">
+                    <div class="status-pill pill-success">
+                        <i class="ph ph-shield-check"></i>
+                        <span>R$ 1.850<br>salvos</span>
+                    </div>
+                    <div class="status-pill pill-danger">
+                        <i class="ph ph-warning"></i>
+                        <span>3 lotes<br>críticos</span>
+                    </div>
+                    <div class="status-pill pill-warning">
+                        <i class="ph ph-tag"></i>
+                        <span>2 proms.<br>ativas</span>
+                    </div>
+                </section>
+
+                <!-- Card Vendas (Barras) -->
+                <section class="card">
+                    <h3 style="font-size: var(--text-md); margin-bottom: 16px;">Vendas — 7 dias</h3>
+                    <div style="display: flex; align-items: flex-end; justify-content: space-between; height: 100px; gap: 8px;">
+                        <div style="width: 100%; height: 40%; background: var(--primary); border-radius: 4px; box-shadow: 0 0 10px rgba(16,185,129,0.4);"></div>
+                        <div style="width: 100%; height: 70%; background: var(--primary); border-radius: 4px; box-shadow: 0 0 10px rgba(16,185,129,0.4);"></div>
+                        <div style="width: 100%; height: 100%; background: var(--primary); border-radius: 4px; box-shadow: 0 0 10px rgba(16,185,129,0.4);"></div>
+                        <div style="width: 100%; height: 60%; background: var(--primary); border-radius: 4px; box-shadow: 0 0 10px rgba(16,185,129,0.4);"></div>
+                        <div style="width: 100%; height: 80%; background: var(--primary); border-radius: 4px; box-shadow: 0 0 10px rgba(16,185,129,0.4);"></div>
+                        <div style="width: 100%; height: 50%; background: var(--primary); border-radius: 4px; box-shadow: 0 0 10px rgba(16,185,129,0.4);"></div>
+                        <div style="width: 100%; height: 65%; background: var(--primary); border-radius: 4px; box-shadow: 0 0 10px rgba(16,185,129,0.4);"></div>
+                    </div>
+                </section>
+
+                <button class="btn-outline">
+                    <i class="ph ph-arrows-clockwise"></i>
+                    Sincronizar PDV
+                </button>
+            </section>
+
+            <!-- TELA 2: LOTES -->
+            <section id="lotes" class="view">
+                <header class="top-header">
+                    <h1>Lotes</h1>
+                </header>
+                <p class="text-secondary" style="text-align: center; margin-top: 20px;">Tela de Lotes em construção...</p>
+            </section>
+
+            <!-- TELA 3: CARDÁPIO (MATRIZ BCG) -->
+            <section id="cardapio" class="view">
+                <header class="top-header">
+                    <h1>Cardápio</h1>
+                </header>
+                <p class="text-secondary" style="text-align: center; margin-top: 20px;">Tela de Cardápio em construção...</p>
+            </section>
+
+            <!-- TELA 4: ALERTAS -->
+            <section id="alertas" class="view">
+                <header class="top-header">
+                    <h1>Alertas</h1>
+                </header>
+                <p class="text-secondary" style="text-align: center; margin-top: 20px;">Tela de Alertas em construção...</p>
+            </section>
+
+        </main>
+
+        <!-- Navegação Inferior -->
+       <!-- Navegação Inferior -->
+        <nav class="bottom-nav">
+            <a href="#" class="nav-item active" data-target="inicio">
+                <i class="ph ph-house"></i>
+                <span>Início</span>
+            </a>
+            <a href="#" class="nav-item" data-target="lotes">
+                <i class="ph ph-package"></i>
+                <span>Lotes</span>
+            </a>
+            <a href="#" class="nav-item" data-target="cardapio">
+                <i class="ph ph-fork-knife"></i>
+                <span>Cardápio</span>
+            </a>
+            <a href="#" class="nav-item" data-target="alertas">
+                <div class="icon-wrapper">
+                    <i class="ph ph-bell"></i>
+                    <span class="badge">3</span>
+                </div>
+                <span>Alertas</span>
+            </a>
+        </nav>
+
+    </div>
+    
+    <script src="js/app.js"></script>
+</body>
+</html>

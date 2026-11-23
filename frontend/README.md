@@ -1,56 +1,18 @@
-# LucroPlus — Frontend
+﻿# React + Vite
 
-App do protótipo **LucroPlus** (gestão inteligente de restaurante) reconstruído a
-partir do protótipo HTML original, agora em **React + TypeScript + Vite**.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-É **multiplataforma**: o mesmo código roda como **web** (navegador, inclusive
-mobile) e é empacotado com **Capacitor** para gerar um **app Android instalável
-(APK)** — sem necessidade de publicar em loja.
+Currently, two official plugins are available:
 
-## Stack
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-- **React 19 + TypeScript** — UI e tipagem.
-- **Vite** — dev server e build.
-- **@phosphor-icons/react** — ícones (mesma família do protótipo).
-- **@fontsource** — fontes Inter e Space Grotesk (offline, sem CDN).
-- **Capacitor** — empacota a build web como app nativo Android/iOS.
+## React Compiler
 
-## Estrutura
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-```
-src/
-  data.ts            # dados mocados (portados do js/data.js do protótipo)
-  types.ts           # tipos do domínio
-  AppContext.tsx     # estado global + ações (portado do js/app.js)
-  App.tsx            # moldura + troca de telas + overlays
-  main.tsx           # entrada (fontes + CSS + render)
-  styles/design.css  # design tokens + componentes (copiado do protótipo)
-  components/         # Icon, TabBar, BottomNav, Toast, SheetPrato
-  screens/           # Login, Inicio, Lotes, Cardapio, Alertas, Config
-legacy-js/           # app React (JavaScript) anterior, arquivado
-```
+## Expanding the ESLint configuration
 
-## Rodando na web
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
-```bash
-npm install
-npm run dev      # http://localhost:5173
-npm run build    # type-check (tsc) + build de produção em dist/
-npm run preview  # serve a build de produção
-```
 
-## Gerando o app Android (instalável, sem loja)
-
-Pré-requisitos: **Android Studio** (traz o Android SDK) e **JDK 17**.
-
-```bash
-npm run build           # gera dist/
-npx cap sync android    # copia a build para o projeto nativo
-npx cap open android    # abre no Android Studio
-```
-
-No Android Studio: **Build > Build APK(s)**. O APK gerado
-(`android/app/build/outputs/apk/debug/app-debug.apk`) pode ser instalado
-direto no celular (ativando "Fontes desconhecidas"), sem passar pela Play Store.
-
-> iOS é possível com `npx cap add ios` (requer macOS + Xcode).

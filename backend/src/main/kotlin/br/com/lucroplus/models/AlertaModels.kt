@@ -24,5 +24,20 @@ data class AlertaDto(
     val mensagem: String,
     val dataAlerta: String,
     val visualizado: Boolean = false,
+    val dataValidade: String,
+    val prazoLimiteVenda: String,
+    val diasParaPrazoLimite: Int,
+    val criticidade: String,
     val lote: LoteResumoDto? = null
+)
+
+@Serializable
+data class LotePendentePromocaoDto(
+    val alertaId: Long,
+    val loteId: Long,
+    val numeroLote: String,
+    val ingredienteNome: String,
+    val prazoLimiteVenda: String,
+    val criticidade: String,
+    val dataAcao: String
 )

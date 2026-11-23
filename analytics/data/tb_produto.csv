@@ -1,6 +1,0 @@
-id,nome,descricao,preco,categoria,ativo,data_cadastro
-1,X-Burguer Clássico,Hambúrguer artesanal com queijo alface e tomate,28.90,Lanches,1,2026-09-10 10:00:00
-2,Pizza Margherita,Pizza tradicional com molho mozzarella e manjericão,45.00,Pizzas,1,2026-09-10 10:00:00
-3,Salada Caesar,Alface americana croutons queijo parmesão e molho Caesar,22.00,Saladas,1,2026-09-10 10:00:00
-4,Suco Natural de Laranja,Suco natural feito na hora (500ml),9.50,Bebidas,1,2026-09-10 10:00:00
-5,Torta Holandesa,Fatia de torta holandesa tradicional,14.00,Sobremesas,1,2026-09-10 10:00:00

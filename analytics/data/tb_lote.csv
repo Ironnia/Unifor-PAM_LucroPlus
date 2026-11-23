@@ -1,6 +1,0 @@
-id,ingrediente_id,quantidade,custo_unitario,data_validade,data_entrada,numero_lote,observacao
-1,1,50.000,1.2000,2026-09-18,2026-09-14,LOT-PAO-01,Lote de pão fresco
-2,2,10.000,32.5000,2026-09-16,2026-09-14,LOT-CARNE-01,Carne em risco de validade
-3,3,8.000,38.0000,2026-09-17,2026-09-14,LOT-QUEIJO-01,Queijo mussarela
-4,4,3.500,8.0000,2026-09-15,2026-09-14,LOT-ALFACE-01,Alface em vencimento crítico
-5,5,5.000,6.5000,2026-09-19,2026-09-14,LOT-TOMATE-01,Tomate maduro
